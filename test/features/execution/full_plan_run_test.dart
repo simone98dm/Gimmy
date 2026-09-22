@@ -1,0 +1,95 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:gimmy/data/fit/fit_workout_parser.dart';
+import 'package:gimmy/data/models/plan.dart';
+import 'package:gimmy/data/models/workout_session.dart';
+import 'package:gimmy/data/storage/document_store_io.dart';
+import 'package:gimmy/data/storage/session_repository.dart';
+import 'package:gimmy/data/streak_calculator.dart';
+import 'package:gimmy/features/execution/bloc/execution_bloc.dart';
+
+import 'execution_bloc_test.dart' show FakeTicker;
+
+/// Acceptance: a full run of the real sample plan records a completed session.
+void main() {
+  late Directory tempDir;
+  late SessionRepository sessions;
+  late FakeTicker ticker;
+
+  setUp(() {
+    tempDir = Directory.systemTemp.createTempSync('gimmy-fullrun');
+    sessions = SessionRepository(
+      store: FileDocumentStore('sessions.json', directory: tempDir),
+    );
+    ticker = FakeTicker();
+  });
+
+  tearDown(() async {
+    await ticker.dispose();
+    if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+  });
+
+  Plan sample() => FitWorkoutParser.parse(
+    bytes: File('docs/TotalBody_Sett2-4.fit').readAsBytesSync(),
+    filename: 'TotalBody_Sett2-4.fit',
+    planId: 'plan-1',
+    importedAt: DateTime(2026, 9, 22, 10),
+  );
+
+  test(
+    'every one of the 54 steps can be worked through to a completed session',
+    () async {
+      final plan = sample();
+      final startedAt = DateTime(2026, 9, 22, 18);
+      final bloc = ExecutionBloc(
+        plan: plan,
+        sessionRepository: sessions,
+        ticker: ticker,
+        now: () => startedAt,
+      )..add(const ExecutionStarted());
+      await pumpEventQueue();
+
+      var guard = 0;
+      while (bloc.state.isRunning) {
+        // Nothing should take this many moves; the guard stops a bug here from
+        // hanging the suite instead of failing it.
+        expect(
+          guard++,
+          lessThan(plan.stepCount * 4),
+          reason: 'stuck on a step',
+        );
+
+        final step = bloc.state.currentStep!;
+        if (step.isTimer) {
+          bloc.add(const ExecutionPrimaryPressed());
+          await pumpEventQueue();
+          await ticker.tick(step.durationSeconds!);
+        } else {
+          bloc.add(const ExecutionPrimaryPressed());
+          await pumpEventQueue();
+        }
+      }
+
+      expect(bloc.state.status, ExecutionStatus.completed);
+      expect(bloc.state.stepsCompleted, 54);
+      expect(bloc.state.stepsSkipped, 0);
+
+      // Every timer in the plan, run down in full: 52m45s of actual clock.
+      expect(bloc.state.totalActiveSeconds, 3165);
+
+      final stored = await sessions.loadAll();
+      expect(stored, hasLength(1), reason: 'one session, written twice');
+      expect(stored.single.status, SessionStatus.completed);
+      expect(stored.single.stepsCompleted, 54);
+      expect(stored.single.planName, 'Total Body S2-4');
+      expect(stored.single.endedAt, isNotNull);
+
+      // And the day now counts towards the streak.
+      expect(StreakCalculator.calculate(stored, now: startedAt), 1);
+
+      await bloc.close();
+    },
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
+}

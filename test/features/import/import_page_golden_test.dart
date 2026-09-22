@@ -1,0 +1,132 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:gimmy/core/theme/app_theme.dart';
+import 'package:gimmy/core/widgets/gimmy_scaffold.dart';
+import 'package:gimmy/data/fit/fit_file_picker.dart';
+import 'package:gimmy/data/fit/fit_workout_parser.dart';
+import 'package:gimmy/data/models/plan.dart';
+import 'package:gimmy/data/storage/document_store_io.dart';
+import 'package:gimmy/data/storage/plan_repository.dart';
+import 'package:gimmy/data/storage/settings_repository.dart';
+import 'package:gimmy/features/import/bloc/import_bloc.dart';
+import 'package:gimmy/features/import/view/import_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../support/test_fonts.dart';
+
+/// Renders the Import page against the real sample workout so its layout can be
+/// eyeballed next to the Stitch screen, and regressions show up as a diff.
+///
+/// Run `flutter test --update-goldens` to refresh after an intentional change.
+Plan sampleParsedPlan() => FitWorkoutParser.parse(
+  bytes: File('docs/TotalBody_Sett2-4.fit').readAsBytesSync(),
+  filename: 'TotalBody_Sett2-4.fit',
+  planId: 'plan-1',
+  importedAt: DateTime(2026, 9, 22, 10),
+);
+
+Widget harness({required Brightness brightness, required ImportBloc bloc}) {
+  return MaterialApp(
+    debugShowCheckedModeBanner: false,
+    theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
+    home: GimmyScaffold(
+      label: 'Plan Import',
+      child: BlocProvider.value(value: bloc, child: const ImportPage()),
+    ),
+  );
+}
+
+void main() {
+  late Directory tempDir;
+
+  setUpAll(loadAppFonts);
+
+  setUp(() async {
+    tempDir = Directory.systemTemp.createTempSync('gimmy-golden');
+    SharedPreferences.setMockInitialValues({});
+  });
+
+  tearDown(() {
+    if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+  });
+
+  Future<ImportBloc> blocWith(PickedFitFile? picked) async => ImportBloc(
+    pickFile: () async => picked,
+    planRepository: PlanRepository(
+      store: FileDocumentStore('plan.json', directory: tempDir),
+    ),
+    settingsRepository: SettingsRepository(
+      preferences: await SharedPreferences.getInstance(),
+    ),
+  );
+
+  Future<void> renderAndCapture(
+    WidgetTester tester, {
+    required Brightness brightness,
+    required String name,
+    ImportEvent? event,
+  }) async {
+    tester.view.physicalSize = const Size(1179, 2556); // iPhone 17
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+
+    final bloc = await blocWith(
+      PickedFitFile(
+        name: 'TotalBody_Sett2-4.fit',
+        bytes: File('docs/TotalBody_Sett2-4.fit').readAsBytesSync(),
+      ),
+    );
+    addTearDown(bloc.close);
+
+    await tester.pumpWidget(harness(brightness: brightness, bloc: bloc));
+    if (event != null) {
+      bloc.add(event);
+      await tester.pumpAndSettle();
+    }
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/$name.png'),
+    );
+  }
+
+  testWidgets('import page, waiting for a file (dark)', (tester) async {
+    await renderAndCapture(
+      tester,
+      brightness: Brightness.dark,
+      name: 'import_idle_dark',
+    );
+  });
+
+  testWidgets('import page, waiting for a file (light)', (tester) async {
+    await renderAndCapture(
+      tester,
+      brightness: Brightness.light,
+      name: 'import_idle_light',
+    );
+  });
+
+  testWidgets('import page, previewing the sample plan (dark)', (tester) async {
+    await renderAndCapture(
+      tester,
+      brightness: Brightness.dark,
+      name: 'import_preview_dark',
+      event: const ImportFileRequested(),
+    );
+  });
+
+  testWidgets('import page, previewing the sample plan (light)', (
+    tester,
+  ) async {
+    await renderAndCapture(
+      tester,
+      brightness: Brightness.light,
+      name: 'import_preview_light',
+      event: const ImportFileRequested(),
+    );
+  });
+}
