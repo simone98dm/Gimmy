@@ -56,6 +56,11 @@ them checks `GimmyMotion.isReduced(context)` and stays still when the platform a
   in a widget test hangs rather than fails. Do it inside `tester.runAsync`.
 - **Goldens need fonts loaded.** Call `loadAppFonts()` from `test/support/test_fonts.dart` in
   `setUpAll`, or every glyph renders as a box and overflow goes unnoticed.
+- **Audio cues need silencing in tests.** `WorkoutCues` touches audioplayers, which
+  opens a platform event stream the moment it is used; under `flutter_test` the missing
+  plugin is reported through `FlutterError`, out of reach of any try/catch, and fails
+  whatever test happened to advance a step. Call `silenceWorkoutCues()` from
+  `test/support/silent_cues.dart` in any test that runs the execution page.
 - **Do not `pumpAndSettle` on the execution page.** The live dot pulses for as long as the timer
   is running, so there is never a settled frame. Pump fixed durations instead.
 - **Flow tests must wait on a condition**, not a fixed number of pumps — see

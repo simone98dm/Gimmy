@@ -13,6 +13,7 @@ import '../widgets/execution_controls.dart';
 import '../widgets/live_dot.dart';
 import '../widgets/metric_strip.dart';
 import '../widgets/timer_ring.dart';
+import '../workout_cues.dart';
 
 /// Guides the user through the active plan, one step at a time.
 ///
@@ -21,22 +22,41 @@ import '../widgets/timer_ring.dart';
 /// current step — chips, title, the countdown dial, the metric strip and the
 /// controls — then the next-up card and the form tip. The completion summary
 /// arrives as a modal over the top of it, not as a separate page.
-class ExecutionPage extends StatelessWidget {
+class ExecutionPage extends StatefulWidget {
   const ExecutionPage({super.key, required this.onDone});
 
   /// Leaves the workout, back to the Dashboard.
   final VoidCallback onDone;
 
   @override
+  State<ExecutionPage> createState() => _ExecutionPageState();
+}
+
+class _ExecutionPageState extends State<ExecutionPage> {
+  /// The last state the cues saw, so a listener call can tell what moved.
+  late ExecutionState _previous = context.read<ExecutionBloc>().state;
+
+  @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ExecutionBloc, ExecutionState>(
+    return BlocConsumer<ExecutionBloc, ExecutionState>(
+      // Sound and vibration live here rather than in the bloc: they are
+      // feedback about a state change, not part of it, and a bloc test should
+      // not have to silence a speaker.
+      listener: (context, state) {
+        final cue = cueFor(_previous, state);
+        _previous = state;
+        if (cue != null) WorkoutCues.play(cue);
+      },
       builder: (context, state) {
         return Stack(
           children: [
             Positioned.fill(child: _Workout(state: state)),
             if (state.isFinished)
               Positioned.fill(
-                child: CompletionSummary(state: state, onDone: onDone),
+                child: CompletionSummary(
+                  state: state,
+                  onDone: widget.onDone,
+                ),
               ),
           ],
         );

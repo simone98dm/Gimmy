@@ -48,6 +48,10 @@ dependencies:
   # Keep the screen on during a workout
   wakelock_plus: ^1.3.2
 
+  # The step / completion audio cues. SystemSound is a no-op on iOS and the
+  # web, so the cues need a real player.
+  audioplayers: ^6.8.1
+
   # Month names / date formatting in the calendar
   intl: ^0.20.2
 
@@ -76,6 +80,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    # Workout cues, generated as plain 16-bit mono WAV; see WorkoutCues.
+    - assets/audio/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

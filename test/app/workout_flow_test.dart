@@ -16,6 +16,7 @@ import 'package:gimmy/data/storage/settings_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/pump_until.dart';
+import '../support/silent_cues.dart';
 
 /// Acceptance: running a workout to the end records it and the Dashboard
 /// reflects it — streak up, marker on today.
@@ -35,6 +36,8 @@ Plan shortPlan() => Plan(
 );
 
 void main() {
+  silenceWorkoutCues();
+
   late Directory tempDir;
 
   setUp(() {
