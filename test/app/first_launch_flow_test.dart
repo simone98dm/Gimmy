@@ -14,6 +14,8 @@ import 'package:gimmy/data/storage/settings_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/pump_until.dart';
+import '../support/fake_heart_rate_monitor.dart';
+import '../support/sample_fit.dart';
 
 /// The whole first run: empty install, import, land on the Dashboard.
 ///
@@ -32,10 +34,8 @@ void main() {
     if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
   });
 
-  Future<PickedFitFile?> pickSample() async => PickedFitFile(
-    name: 'TotalBody_Sett2-4.fit',
-    bytes: File('docs/TotalBody_Sett2-4.fit').readAsBytesSync(),
-  );
+  Future<PickedFitFile?> pickSample() async =>
+      PickedFitFile(name: sampleFitFilename, bytes: sampleFitBytes());
 
   testWidgets('a fresh install imports a plan and lands on the Dashboard', (
     tester,
@@ -70,9 +70,11 @@ void main() {
               sessionRepository: context.read<SessionRepository>(),
               settingsRepository: context.read<SettingsRepository>(),
             )..add(const AppStarted()),
-            child: MaterialApp(
-              theme: AppTheme.dark,
-              home: HomeShell(pickFile: pickSample),
+            child: withHeartRate(
+              MaterialApp(
+                theme: AppTheme.dark,
+                home: HomeShell(pickFile: pickSample),
+              ),
             ),
           ),
         ),
@@ -93,7 +95,7 @@ void main() {
     // so this checks the things the Dashboard is actually made of.
     expect(find.text('Import Workout'), findsNothing);
     expect(find.text('0 DAYS STREAK'), findsOneWidget);
-    expect(find.text('Total Body S2-4'), findsOneWidget);
+    expect(find.text(sampleFitPlanName), findsOneWidget);
     expect(find.text('START WORKOUT'), findsOneWidget);
   });
 }

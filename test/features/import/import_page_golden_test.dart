@@ -16,14 +16,15 @@ import 'package:gimmy/features/import/view/import_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/test_fonts.dart';
+import '../../support/sample_fit.dart';
 
 /// Renders the Import page against the real sample workout so its layout can be
 /// eyeballed next to the Stitch screen, and regressions show up as a diff.
 ///
 /// Run `flutter test --update-goldens` to refresh after an intentional change.
 Plan sampleParsedPlan() => FitWorkoutParser.parse(
-  bytes: File('docs/TotalBody_Sett2-4.fit').readAsBytesSync(),
-  filename: 'TotalBody_Sett2-4.fit',
+  bytes: sampleFitBytes(),
+  filename: sampleFitFilename,
   planId: 'plan-1',
   importedAt: DateTime(2026, 9, 22, 10),
 );
@@ -74,10 +75,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     final bloc = await blocWith(
-      PickedFitFile(
-        name: 'TotalBody_Sett2-4.fit',
-        bytes: File('docs/TotalBody_Sett2-4.fit').readAsBytesSync(),
-      ),
+      PickedFitFile(name: sampleFitFilename, bytes: sampleFitBytes()),
     );
     addTearDown(bloc.close);
 

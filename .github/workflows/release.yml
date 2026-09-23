@@ -1,0 +1,26 @@
+name: Release
+
+# Reads the Conventional Commits merged into main and keeps a release PR open
+# that bumps pubspec.yaml (version and build number), AppConfig.appVersion and
+# CHANGELOG.md. Merging that PR tags vX.Y.Z and publishes the GitHub release.
+#
+#   fix:          1.0.0 -> 1.0.1
+#   feat:         1.0.0 -> 1.1.0
+#   feat!: / BREAKING CHANGE: footer   1.0.0 -> 2.0.0
+#   chore:, docs:, test:, ci:, refactor:   no release on their own
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

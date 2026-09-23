@@ -20,10 +20,12 @@ import 'package:gimmy/features/settings/view/settings_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/test_fonts.dart';
+import '../support/fake_heart_rate_monitor.dart';
+import '../support/sample_fit.dart';
 
 Plan samplePlan() => FitWorkoutParser.parse(
-  bytes: File('docs/TotalBody_Sett2-4.fit').readAsBytesSync(),
-  filename: 'TotalBody_Sett2-4.fit',
+  bytes: sampleFitBytes(),
+  filename: sampleFitFilename,
   planId: 'plan-1',
   importedAt: DateTime(2026, 9, 22, 10),
 );
@@ -35,12 +37,12 @@ List<WorkoutSession> sampleSessions(DateTime today) => [
     WorkoutSession(
       id: 's$offset',
       planId: 'plan-1',
-      planName: 'Total Body S2-4',
+      planName: sampleFitPlanName,
       startedAt: DateTime(today.year, today.month, today.day - offset, 18),
       endedAt: DateTime(today.year, today.month, today.day - offset, 19),
       totalActiveSeconds: 3600,
       status: offset == 2 ? SessionStatus.abandoned : SessionStatus.completed,
-      stepsCompleted: offset == 2 ? 21 : 54,
+      stepsCompleted: offset == 2 ? 10 : sampleFitStepCount,
       stepsSkipped: offset == 2 ? 3 : 0,
     ),
 ];
@@ -106,16 +108,18 @@ void main() {
     addTearDown(bloc.close);
 
     await tester.pumpWidget(
-      MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
-        home: BlocProvider.value(
-          value: bloc,
-          child: GimmyScaffold(
-            label: 'Preview',
-            tab: tab,
-            onSelectTab: (_) {},
-            child: page,
+      withHeartRate(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
+          home: BlocProvider.value(
+            value: bloc,
+            child: GimmyScaffold(
+              label: 'Preview',
+              tab: tab,
+              onSelectTab: (_) {},
+              child: page,
+            ),
           ),
         ),
       ),

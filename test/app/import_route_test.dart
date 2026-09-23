@@ -11,6 +11,8 @@ import 'package:gimmy/data/storage/plan_repository.dart';
 import 'package:gimmy/data/storage/settings_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/sample_fit.dart';
+
 /// Drives the real Import route end to end: pick, preview, confirm, and out.
 void main() {
   late Directory tempDir;
@@ -24,10 +26,8 @@ void main() {
     if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
   });
 
-  Future<PickedFitFile?> pickSample() async => PickedFitFile(
-    name: 'TotalBody_Sett2-4.fit',
-    bytes: File('docs/TotalBody_Sett2-4.fit').readAsBytesSync(),
-  );
+  Future<PickedFitFile?> pickSample() async =>
+      PickedFitFile(name: sampleFitFilename, bytes: sampleFitBytes());
 
   /// Pushes [ImportRoute] and records what it pops with.
   Widget harness({
@@ -119,7 +119,7 @@ void main() {
         reason: 'the route should close itself once the plan is saved',
       );
       expect(result, isTrue, reason: 'it reports that a plan was imported');
-      expect(savedSteps, 54, reason: 'the plan is on disk');
+      expect(savedSteps, sampleFitStepCount, reason: 'the plan is on disk');
     });
   }
 }

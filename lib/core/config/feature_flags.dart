@@ -1,26 +1,32 @@
 /// Every feature flag and tunable constant in the app, in one place.
 ///
 /// The metric flags gate UI that is fully built but has no real data source
-/// behind it yet (see "Out of scope": no BPM or calorie hardware). Flip one to
-/// `true` and the component appears on the Execution page.
+/// behind it yet (no calorie model, no RPE prompt). Flip one to `true` and the
+/// component appears on the Execution page. BPM needs no flag: its tile shows
+/// whenever a heart-rate sensor is paired.
 abstract final class FeatureFlags {
-  /// Live heart rate tile on the Execution page.
-  static const bool showBpm = false;
-
   /// Calories-burned tile on the Execution page.
   static const bool showCalories = false;
 
   /// Perceived-effort (RPE) tile on the Execution page.
   static const bool showEffort = false;
 
-  /// True when at least one metric tile is visible, so the Execution page can
-  /// drop the whole row (and its spacing) rather than render an empty band.
-  static bool get showAnyMetric => showBpm || showCalories || showEffort;
+  /// True when at least one flagged metric tile is visible, so the Execution
+  /// page can drop the whole row (and its spacing) rather than render an empty
+  /// band.
+  static bool get showAnyMetric => showCalories || showEffort;
 }
 
 /// Tunables that are not feature switches but also should not be scattered
 /// across widgets as magic numbers.
 abstract final class AppConfig {
+  /// Shown on the About and Legal pages. Bumped by release-please together
+  /// with `version:` in pubspec.yaml — do not edit by hand.
+  static const String appVersion = '1.0.0'; // x-release-please-version
+
+  /// Who built it: the About page credit and the copyright line.
+  static const String author = 'simone98dm';
+
   /// Seconds subtracted by the −10s control on a running timer step.
   static const int timerAdjustmentSeconds = 10;
 

@@ -7,20 +7,30 @@ import '../../../core/theme/tokens.dart';
 /// Heart rate, calories and effort, as a single inset strip inside the stage
 /// card — three cells sharing one recessed surface, per the prototype.
 ///
-/// All three are behind flags in [FeatureFlags] and off by default: the app has
-/// no heart-rate strap, no calorie model and no way to ask for an RPE, so the
-/// numbers would be invented. The component exists so that turning a flag on is
-/// all it takes once there is a real source.
+/// Heart rate shows when [showBpm] says a sensor is paired. Calories and effort
+/// are behind flags in [FeatureFlags] and off by default: the app has no
+/// calorie model and no way to ask for an RPE, so the numbers would be
+/// invented. The component exists so that turning a flag on is all it takes
+/// once there is a real source.
 class MetricStrip extends StatelessWidget {
-  const MetricStrip({super.key, this.bpm, this.calories, this.effort});
+  const MetricStrip({
+    super.key,
+    this.showBpm = false,
+    this.bpm,
+    this.calories,
+    this.effort,
+  });
 
+  final bool showBpm;
+
+  /// Null while the sensor is out of reach; the tile shows a dash.
   final int? bpm;
   final int? calories;
   final double? effort;
 
   @override
   Widget build(BuildContext context) {
-    if (!FeatureFlags.showAnyMetric) return const SizedBox.shrink();
+    if (!showBpm && !FeatureFlags.showAnyMetric) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
     final tokens = GimmyTokens.of(context);
@@ -34,7 +44,7 @@ class MetricStrip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          if (FeatureFlags.showBpm)
+          if (showBpm)
             Expanded(
               child: _Cell(
                 label: 'BPM',

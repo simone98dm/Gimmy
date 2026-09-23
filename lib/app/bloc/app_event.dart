@@ -23,6 +23,33 @@ class AppThemeModeChanged extends AppEvent {
   List<Object?> get props => [themeMode];
 }
 
+/// Turns the step and completion cues — sound and vibration — on or off.
+class AppCuesToggled extends AppEvent {
+  const AppCuesToggled(this.isEnabled);
+
+  final bool isEnabled;
+
+  @override
+  List<Object?> get props => [isEnabled];
+}
+
+/// Remembers [id] as the heart-rate sensor to connect to, now and on every
+/// launch after this one.
+class AppHeartRateMonitorPaired extends AppEvent {
+  const AppHeartRateMonitorPaired({required this.id, required this.name});
+
+  final String id;
+  final String name;
+
+  @override
+  List<Object?> get props => [id, name];
+}
+
+/// Forgets the paired heart-rate sensor, which also disconnects it.
+class AppHeartRateMonitorForgotten extends AppEvent {
+  const AppHeartRateMonitorForgotten();
+}
+
 /// Deletes every plan, session and setting.
 class AppWipeRequested extends AppEvent {
   const AppWipeRequested();

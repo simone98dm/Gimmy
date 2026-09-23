@@ -1,9 +1,14 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/bloc/app_bloc.dart';
 import '../../../core/theme/gimmy_tokens.dart';
 import '../../../core/theme/tokens.dart';
+import '../../about/view/about_page.dart';
+import '../../about/view/legal_page.dart';
+import '../../heart_rate/bloc/heart_rate_bloc.dart';
+import '../../heart_rate/view/pairing_sheet.dart';
 import '../widgets/settings_row.dart';
 import '../widgets/settings_section.dart';
 import '../widgets/theme_mode_selector.dart';
@@ -75,18 +80,10 @@ class SettingsPage extends StatelessWidget {
                     : '${plan.name} · ${plan.stepCount} steps',
                 onTap: onImport,
               ),
-              const SettingsRow(
-                icon: Icons.watch_outlined,
-                title: 'Garmin & watch sync',
-                subtitle: 'Pull workouts straight from Garmin Connect',
-                isComingSoon: true,
-              ),
-              const SettingsRow(
-                icon: Icons.notifications_active_outlined,
-                title: 'Audio cues & haptic beeps',
-                subtitle: 'Countdown beeps in the last seconds of a rest',
-                isComingSoon: true,
-              ),
+              // Web Bluetooth is Chrome-only and cannot reconnect without a
+              // tap, so pairing is a mobile feature.
+              if (!kIsWeb) const _HeartRateRow(),
+              const _CuesRow(),
             ],
           ),
           const SizedBox(height: GimmySpacing.md),
@@ -105,10 +102,80 @@ class SettingsPage extends StatelessWidget {
           ),
           const SizedBox(height: GimmySpacing.md),
 
+          SettingsSection(
+            label: 'About',
+            children: [
+              SettingsRow(
+                icon: Icons.info_outline,
+                title: 'About Gimmy',
+                subtitle: 'Version, how it is built, credits',
+                onTap: () => Navigator.of(context).push(AboutPage.route()),
+              ),
+              SettingsRow(
+                icon: Icons.gavel,
+                title: 'Legal notes & terms',
+                subtitle: 'Disclaimer, your data, trademarks',
+                onTap: () => Navigator.of(context).push(LegalPage.route()),
+              ),
+            ],
+          ),
+          const SizedBox(height: GimmySpacing.md),
+
           const _Footer(),
           const SizedBox(height: GimmySpacing.lg),
         ],
       ),
+    );
+  }
+}
+
+/// Sound and vibration on every new step and at the finish.
+class _CuesRow extends StatelessWidget {
+  const _CuesRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final isEnabled = context.select(
+      (AppBloc bloc) => bloc.state.settings.areCuesEnabled,
+    );
+    void toggle(bool value) =>
+        context.read<AppBloc>().add(AppCuesToggled(value));
+
+    return SettingsRow(
+      icon: isEnabled
+          ? Icons.notifications_active_outlined
+          : Icons.notifications_off_outlined,
+      title: 'Audio cues & haptics',
+      subtitle: 'A beep and a buzz on every new step and at the finish',
+      trailing: Switch(value: isEnabled, onChanged: toggle),
+      onTap: () => toggle(!isEnabled),
+    );
+  }
+}
+
+/// The paired sensor and its live status; opens the pairing sheet.
+class _HeartRateRow extends StatelessWidget {
+  const _HeartRateRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final name = context.select(
+      (AppBloc bloc) => bloc.state.settings.heartRateMonitorName,
+    );
+    final link = context.select((HeartRateBloc bloc) => bloc.state.link);
+    final bpm = context.select((HeartRateBloc bloc) => bloc.state.bpm);
+
+    final subtitle = switch (link) {
+      HeartRateLink.none => 'Pair a Garmin watch or HRM strap for live BPM',
+      HeartRateLink.connecting => '${name ?? 'Sensor'} · waiting for device',
+      HeartRateLink.live => '${name ?? 'Sensor'} · $bpm bpm',
+    };
+
+    return SettingsRow(
+      icon: Icons.watch_outlined,
+      title: 'Garmin heart rate',
+      subtitle: subtitle,
+      onTap: () => showPairingSheet(context),
     );
   }
 }

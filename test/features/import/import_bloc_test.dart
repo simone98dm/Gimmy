@@ -9,10 +9,12 @@ import 'package:gimmy/data/storage/settings_repository.dart';
 import 'package:gimmy/features/import/bloc/import_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-final sampleBytes = File('docs/TotalBody_Sett2-4.fit').readAsBytesSync();
+import '../../support/sample_fit.dart';
+
+final sampleBytes = sampleFitBytes();
 
 PickedFitFile sampleFile() =>
-    PickedFitFile(name: 'TotalBody_Sett2-4.fit', bytes: sampleBytes);
+    PickedFitFile(name: sampleFitFilename, bytes: sampleBytes);
 
 void main() {
   late Directory tempDir;
@@ -67,9 +69,9 @@ void main() {
         ImportStatus.parsing,
         ImportStatus.preview,
       ]);
-      expect(states.last.plan?.name, 'Total Body S2-4');
-      expect(states.last.plan?.stepCount, 54);
-      expect(states.last.filename, 'TotalBody_Sett2-4.fit');
+      expect(states.last.plan?.name, sampleFitPlanName);
+      expect(states.last.plan?.stepCount, sampleFitStepCount);
+      expect(states.last.filename, sampleFitFilename);
 
       // Crucially, nothing is saved until the user confirms.
       expect(await planRepository.load(), isNull);
@@ -89,7 +91,7 @@ void main() {
 
       final saved = await planRepository.load();
       expect(saved, isNotNull);
-      expect(saved!.stepCount, 54);
+      expect(saved!.stepCount, sampleFitStepCount);
       expect((await settingsRepository.load()).activePlanId, saved.id);
     });
 

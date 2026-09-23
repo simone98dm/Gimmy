@@ -8,15 +8,13 @@ import 'package:gimmy/data/fit/fit_workout_parser.dart';
 import 'package:gimmy/data/models/plan.dart';
 import 'package:gimmy/data/models/plan_step.dart';
 
-/// The reference workout shipped with the repo: Garmin export, 28 steps on
-/// disk, 8 repeat blocks, Italian coaching notes.
-final sampleFile = File('docs/TotalBody_Sett2-4.fit');
+import '../../support/sample_fit.dart';
 
 final importedAt = DateTime.utc(2026, 9, 22, 10, 0);
 
 Plan parseSample() => FitWorkoutParser.parse(
-  bytes: sampleFile.readAsBytesSync(),
-  filename: 'TotalBody_Sett2-4.fit',
+  bytes: sampleFitBytes(),
+  filename: sampleFitFilename,
   planId: 'plan-1',
   importedAt: importedAt,
 );
@@ -30,122 +28,112 @@ void main() {
     test('reads the workout name out of the file, not the filename', () {
       final plan = parseSample();
 
-      expect(plan.name, 'Total Body S2-4');
-      expect(plan.sourceFilename, 'TotalBody_Sett2-4.fit');
+      expect(plan.name, sampleFitPlanName);
+      expect(plan.sourceFilename, sampleFitFilename);
       expect(plan.importedAt, importedAt);
     });
 
-    test('expands 28 stored steps and 8 repeat blocks into 54 flat steps', () {
-      final plan = parseSample();
-
-      expect(plan.stepCount, 54);
+    test('expands 13 stored steps and 3 repeat blocks into 22 flat steps', () {
+      expect(parseSample().stepCount, sampleFitStepCount);
     });
 
     test('opens with the warmup and closes with the two cooldown steps', () {
       final steps = parseSample().steps;
 
-      expect(steps.first.name, 'Tapis salita');
+      expect(steps.first.name, 'Warm-up bike');
       expect(steps.first.type, StepType.timer);
-      expect(steps.first.durationSeconds, 600);
+      expect(steps.first.durationSeconds, 300);
       expect(steps.first.intensity, StepIntensity.warmup);
 
-      expect(steps[52].name, 'Tapis scarico');
-      expect(steps[52].intensity, StepIntensity.cooldown);
+      expect(steps[20].name, 'Cool-down walk');
+      expect(steps[20].intensity, StepIntensity.cooldown);
       expect(steps.last.name, 'Stretching');
-      expect(steps.last.durationSeconds, 300);
+      expect(steps.last.durationSeconds, 180);
       expect(steps.last.intensity, StepIntensity.cooldown);
     });
 
     test('converts milliseconds in the file into whole seconds', () {
-      final steps = parseSample().steps;
-      // "Recupero" after the first Leg press set is 90000 ms in the file.
-      final firstRest = steps.firstWhere((s) => s.name == 'Recupero');
+      // The first "Rest" is 60000 ms in the file.
+      final firstRest = parseSample().steps.firstWhere((s) => s.name == 'Rest');
 
-      expect(firstRest.durationSeconds, 90);
+      expect(firstRest.durationSeconds, 60);
       expect(firstRest.intensity, StepIntensity.rest);
     });
 
     test('reads rep-based steps as reps, not as a zero-length timer', () {
-      final legPress = parseSample().steps.firstWhere(
-        (s) => s.name == 'Leg press',
-      );
+      final squat = parseSample().steps.firstWhere((s) => s.name == 'Squat');
 
-      expect(legPress.type, StepType.reps);
-      expect(legPress.repCount, 12);
-      expect(legPress.durationSeconds, isNull);
-      expect(legPress.intensity, StepIntensity.active);
+      expect(squat.type, StepType.reps);
+      expect(squat.repCount, 10);
+      expect(squat.durationSeconds, isNull);
+      expect(squat.intensity, StepIntensity.active);
     });
 
     test('repeats a set three times, interleaved with its rest step', () {
       final names = parseSample().steps.map((s) => s.name).toList();
 
       expect(names.sublist(0, 7), [
-        'Tapis salita',
-        'Leg press',
-        'Recupero',
-        'Leg press',
-        'Recupero',
-        'Leg press',
-        'Recupero',
+        'Warm-up bike',
+        'Squat',
+        'Rest',
+        'Squat',
+        'Rest',
+        'Squat',
+        'Rest',
       ]);
     });
 
     test('keeps both sides of a two-exercise block in order', () {
       final names = parseSample().steps.map((s) => s.name).toList();
-      final start = names.indexOf('Rematore DX');
+      final start = names.indexOf('Row left');
 
       expect(names.sublist(start, start + 9), [
-        'Rematore DX',
-        'Rematore SX',
-        'Recupero',
-        'Rematore DX',
-        'Rematore SX',
-        'Recupero',
-        'Rematore DX',
-        'Rematore SX',
-        'Recupero',
+        'Row left',
+        'Row right',
+        'Rest',
+        'Row left',
+        'Row right',
+        'Rest',
+        'Row left',
+        'Row right',
+        'Rest',
       ]);
     });
 
     test('carries the coaching notes through, including non-ASCII text', () {
-      final legPress = parseSample().steps.firstWhere(
-        (s) => s.name == 'Leg press',
-      );
+      final squat = parseSample().steps.firstWhere((s) => s.name == 'Squat');
 
-      expect(
-        legPress.notes,
-        'Piedi a meta pedana, scendi a 90 gradi, non bloccare le ginocchia. Range 40-60 kg.',
-      );
+      expect(squat.notes, sampleFitSquatNotes);
     });
 
     test(
       'leaves rest steps without notes rather than inventing empty strings',
       () {
-        final rest = parseSample().steps.firstWhere(
-          (s) => s.name == 'Recupero',
-        );
+        final rest = parseSample().steps.firstWhere((s) => s.name == 'Rest');
 
         expect(rest.notes, isNull);
       },
     );
 
     test('estimates a duration that accounts for both timers and reps', () {
-      final plan = parseSample();
-
-      final estimate = plan.estimatedDuration(
+      final estimate = parseSample().estimatedDuration(
         secondsPerRep: AppConfig.estimatedSecondsPerRep,
       );
 
-      // 3165s of real timers, plus 24 reps steps x 12 reps x 3s.
-      expect(estimate, const Duration(seconds: 3165 + 864));
+      expect(
+        estimate,
+        const Duration(
+          seconds:
+              sampleFitTimerSeconds +
+              sampleFitTotalReps * AppConfig.estimatedSecondsPerRep,
+        ),
+      );
     });
 
     test('survives a round trip through JSON', () {
       final plan = parseSample();
 
-      final restored = Plan.fromJson(plan.toJson());
-
-      expect(restored, plan);
+      expect(Plan.fromJson(plan.toJson()), plan);
     });
   });
 
@@ -189,7 +177,7 @@ void main() {
     });
 
     test('rejects a FIT file whose body has been corrupted', () {
-      final bytes = Uint8List.fromList(sampleFile.readAsBytesSync());
+      final bytes = sampleFitBytes();
       // Flip a byte inside the data records; the header still says ".FIT".
       bytes[200] = bytes[200] ^ 0xFF;
 
@@ -205,7 +193,7 @@ void main() {
     });
 
     test('rejects a FIT file that has been truncated', () {
-      final full = sampleFile.readAsBytesSync();
+      final full = sampleFitBytes();
       final truncated = Uint8List.fromList(full.sublist(0, full.length ~/ 2));
 
       expect(

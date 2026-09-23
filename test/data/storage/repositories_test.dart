@@ -15,17 +15,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 Plan samplePlan({String id = 'plan-1'}) => Plan(
   id: id,
-  name: 'Total Body S2-4',
-  sourceFilename: 'TotalBody_Sett2-4.fit',
+  name: 'Full Body Sample',
+  sourceFilename: 'full_body_sample.fit',
   importedAt: DateTime.utc(2026, 9, 22, 10),
   steps: [
     PlanStep.timer(
-      name: 'Tapis salita',
+      name: 'Warm-up bike',
       intensity: StepIntensity.warmup,
       durationSeconds: 600,
     ),
     PlanStep.reps(
-      name: 'Leg press',
+      name: 'Squat',
       intensity: StepIntensity.active,
       repCount: 12,
       notes: 'Range 40-60 kg.',
@@ -37,7 +37,7 @@ Plan samplePlan({String id = 'plan-1'}) => Plan(
 WorkoutSession session(String id, DateTime startedAt) => WorkoutSession(
   id: id,
   planId: 'plan-1',
-  planName: 'Total Body S2-4',
+  planName: 'Full Body Sample',
   startedAt: startedAt,
 );
 
@@ -240,6 +240,46 @@ void main() {
       final settings = await repo.load();
       expect(settings.themeMode, ThemeMode.dark);
       expect(settings.activePlanId, 'plan-1');
+    });
+
+    test('round-trips the paired heart-rate sensor', () async {
+      final repo = SettingsRepository(
+        preferences: await SharedPreferences.getInstance(),
+      );
+
+      await repo.save(
+        const AppSettings(
+          heartRateMonitorId: 'AA:BB:CC',
+          heartRateMonitorName: 'Forerunner 965',
+        ),
+      );
+
+      final settings = await repo.load();
+      expect(settings.heartRateMonitorId, 'AA:BB:CC');
+      expect(settings.heartRateMonitorName, 'Forerunner 965');
+      expect(settings.withoutHeartRateMonitor().hasHeartRateMonitor, isFalse);
+    });
+
+    test('round-trips the cues toggle, on by default', () async {
+      final repo = SettingsRepository(
+        preferences: await SharedPreferences.getInstance(),
+      );
+      expect((await repo.load()).areCuesEnabled, isTrue);
+
+      await repo.save(const AppSettings(areCuesEnabled: false));
+
+      expect((await repo.load()).areCuesEnabled, isFalse);
+    });
+
+    test('keeps cues on for settings saved before the toggle', () async {
+      SharedPreferences.setMockInitialValues({
+        SettingsRepository.storageKey: jsonEncode({'themeMode': 'dark'}),
+      });
+      final repo = SettingsRepository(
+        preferences: await SharedPreferences.getInstance(),
+      );
+
+      expect((await repo.load()).areCuesEnabled, isTrue);
     });
 
     test(

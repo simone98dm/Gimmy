@@ -2,15 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../data/heart_rate/ble_heart_rate_monitor.dart';
+import '../../data/heart_rate/heart_rate_monitor.dart';
 import '../../data/storage/plan_repository.dart';
 import '../../data/storage/session_repository.dart';
 import '../../data/storage/settings_repository.dart';
+import '../../features/heart_rate/bloc/heart_rate_bloc.dart';
 import '../bloc/app_bloc.dart';
 import 'home_shell.dart';
 
-/// Root of the app: repositories, the shared [AppBloc], and the theme.
+/// Root of the app: repositories, the shared [AppBloc] and [HeartRateBloc],
+/// and the theme.
 class GimmyApp extends StatelessWidget {
-  const GimmyApp({super.key});
+  const GimmyApp({super.key, this.heartRateMonitor});
+
+  /// Replaces Bluetooth in tests.
+  final HeartRateMonitor? heartRateMonitor;
 
   @override
   Widget build(BuildContext context) {
@@ -20,13 +27,32 @@ class GimmyApp extends StatelessWidget {
         RepositoryProvider(create: (_) => SessionRepository()),
         RepositoryProvider(create: (_) => SettingsRepository()),
       ],
-      child: BlocProvider(
-        create: (context) => AppBloc(
-          planRepository: context.read<PlanRepository>(),
-          sessionRepository: context.read<SessionRepository>(),
-          settingsRepository: context.read<SettingsRepository>(),
-        )..add(const AppStarted()),
-        child: const _ThemedApp(),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (context) => AppBloc(
+              planRepository: context.read<PlanRepository>(),
+              sessionRepository: context.read<SessionRepository>(),
+              settingsRepository: context.read<SettingsRepository>(),
+            )..add(const AppStarted()),
+          ),
+          BlocProvider(
+            create: (_) => HeartRateBloc(
+              monitor: heartRateMonitor ?? BleHeartRateMonitor(),
+            ),
+          ),
+        ],
+        // The paired sensor lives in settings, so loading them at launch is
+        // what reconnects it — as does pairing, forgetting, and a wipe.
+        child: BlocListener<AppBloc, AppState>(
+          listenWhen: (previous, current) =>
+              previous.settings.heartRateMonitorId !=
+              current.settings.heartRateMonitorId,
+          listener: (context, state) => context.read<HeartRateBloc>().add(
+            HeartRateMonitorChanged(state.settings.heartRateMonitorId),
+          ),
+          child: const _ThemedApp(),
+        ),
       ),
     );
   }

@@ -10,6 +10,7 @@ import 'package:gimmy/data/streak_calculator.dart';
 import 'package:gimmy/features/execution/bloc/execution_bloc.dart';
 
 import 'execution_bloc_test.dart' show FakeTicker;
+import '../../support/sample_fit.dart';
 
 /// Acceptance: a full run of the real sample plan records a completed session.
 void main() {
@@ -31,14 +32,14 @@ void main() {
   });
 
   Plan sample() => FitWorkoutParser.parse(
-    bytes: File('docs/TotalBody_Sett2-4.fit').readAsBytesSync(),
-    filename: 'TotalBody_Sett2-4.fit',
+    bytes: sampleFitBytes(),
+    filename: sampleFitFilename,
     planId: 'plan-1',
     importedAt: DateTime(2026, 9, 22, 10),
   );
 
   test(
-    'every one of the 54 steps can be worked through to a completed session',
+    'every step of the sample can be worked through to a completed session',
     () async {
       final plan = sample();
       final startedAt = DateTime(2026, 9, 22, 18);
@@ -72,17 +73,17 @@ void main() {
       }
 
       expect(bloc.state.status, ExecutionStatus.completed);
-      expect(bloc.state.stepsCompleted, 54);
+      expect(bloc.state.stepsCompleted, sampleFitStepCount);
       expect(bloc.state.stepsSkipped, 0);
 
-      // Every timer in the plan, run down in full: 52m45s of actual clock.
-      expect(bloc.state.totalActiveSeconds, 3165);
+      // Every timer in the plan, run down in full: 20m15s of actual clock.
+      expect(bloc.state.totalActiveSeconds, sampleFitTimerSeconds);
 
       final stored = await sessions.loadAll();
       expect(stored, hasLength(1), reason: 'one session, written twice');
       expect(stored.single.status, SessionStatus.completed);
-      expect(stored.single.stepsCompleted, 54);
-      expect(stored.single.planName, 'Total Body S2-4');
+      expect(stored.single.stepsCompleted, sampleFitStepCount);
+      expect(stored.single.planName, sampleFitPlanName);
       expect(stored.single.endedAt, isNotNull);
 
       // And the day now counts towards the streak.

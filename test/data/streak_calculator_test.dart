@@ -6,7 +6,7 @@ WorkoutSession sessionOn(DateTime startedAt, {SessionStatus? status}) =>
     WorkoutSession(
       id: 's-${startedAt.toIso8601String()}',
       planId: 'plan-1',
-      planName: 'Total Body S2-4',
+      planName: 'Full Body Sample',
       startedAt: startedAt,
       status: status,
     );

@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `gimmy` is a Flutter app (Dart SDK `^3.13.4`, Flutter 3.47.5 stable, bundle id
 `com.simone98dm.gimmy`) that imports a Garmin `.fit` workout plan, guides the user through it
 step by step, and tracks a streak and a calendar of past sessions. Everything is local: no
-backend, no account, no network calls at all.
+backend, no account, no network calls at runtime. Live BPM comes from a paired Bluetooth
+heart-rate sensor (a Garmin watch or strap).
 
 Platforms: **android, ios and web** (no macos/linux/windows). Adding one requires
 `flutter create --platforms=<name> .`.
@@ -44,7 +45,7 @@ them checks `GimmyMotion.isReduced(context)` and stays still when the platform a
 - **The FIT decoder is ours** (`lib/data/fit/fit_decoder.dart`), not a package. The official port,
   `fit_dart_sdk`, cannot compile for the web: it contains `int` literals too large for a JavaScript
   number, which is a hard error on dart2js *and* dart2wasm. Ours reads only `file_id`, `workout`
-  and `workout_step` — the parser tests against the real sample file are its contract.
+  and `workout_step` — the parser tests against the reference workout are its contract.
 - **The file picker is deliberately unfiltered** (`FileType.any`). iOS has no UTI for `.fit`, and
   filtering to it leaves the picker with an empty type list where nothing is selectable. The
   parser does the rejecting instead.
@@ -75,11 +76,13 @@ them checks `GimmyMotion.isReduced(context)` and stays still when the platform a
 - **Do not put `InkSparkle` back.** It compiles a fragment shader on first use and stalls the
   first tap. The theme uses `InkRipple`.
 - **Tab pages are all alive** inside the `IndexedStack`, so `context.watch` on `AppBloc` rebuilds
-  every one of them, the 54-row list included. Use `context.select` and take only what the page
+  every one of them, the step list included. Use `context.select` and take only what the page
   draws.
 
-`docs/TotalBody_Sett2-4.fit` is the reference workout: 28 stored steps and 8 repeat blocks that
-expand to **54 flat steps**, 52m45s of timers. Several tests assert those numbers.
+The reference workout is built in memory by `test/support/sample_fit.dart` (a small FIT
+encoder with its own CRC): 13 stored steps and 3 repeat blocks that expand to **22 flat steps**,
+20m15s of timers. Tests assert those numbers through its `sampleFit*` constants — change the
+fixture and they follow, but the goldens need `--update-goldens`. No `.fit` file lives in the repo.
 
 ## Commands
 
@@ -102,13 +105,30 @@ starting with an underscore, so constructors injecting into private fields canno
 
 ## Notes
 
+- **Releases are automated** by release-please (`.github/workflows/release.yml`,
+  `release-please-config.json`). Commit with Conventional Commits: `fix:` bumps the patch,
+  `feat:` the minor, `feat!:` or a `BREAKING CHANGE:` footer the major; `chore:`, `docs:`,
+  `test:`, `ci:` and `refactor:` never release on their own. Merging the release PR bumps
+  `pubspec.yaml` (build number included), `AppConfig.appVersion` and `CHANGELOG.md`, and tags
+  `vX.Y.Z`. Never bump the version by hand — `test/core/config/app_version_test.dart` fails
+  if the two version strings drift.
+
 - Release mode does not run on an iOS simulator; use a physical device.
 - `.gitignore` used to exclude `test/features` and `test/app`, which silently hid most of the
   suite. If tests seem to vanish from a diff, check there first.
 - On the web the layout is capped at phone width and centred (`_PhoneFrame`); the design is a
   4-column mobile grid and gains nothing from a desktop's width.
-- BPM, calories and effort are built but hidden behind `FeatureFlags`, off by default, because
-  there is no real data source for them.
+- Calories and effort are built but hidden behind `FeatureFlags`, off by default, because
+  there is no real data source for them. BPM shows whenever a heart-rate sensor is paired.
+- **Heart rate is standard BLE only** (`flutter_blue_plus`, Heart Rate Service 0x180D). A Garmin
+  watch only appears while "Broadcast Heart Rate" is on; HRM straps always do. Nothing else from
+  Garmin (calories, pace) is reachable without the Connect IQ SDK. The paired id lives in
+  `AppSettings`; a `BlocListener` in `GimmyApp` turns it into `HeartRateMonitorChanged`, which is
+  what reconnects at launch. Pairing is hidden on the web. Any test that builds Settings or the
+  Execution page must wrap it in `withHeartRate` from `test/support/fake_heart_rate_monitor.dart`.
+- `flutter_blue_plus` is licensed free for personal use only, and its Android Gradle plugin
+  POSTs the app id/name/version to the author's license endpoint on every Android build. The
+  app itself still makes no network calls at runtime.
 
 # CLAUDE.md
 

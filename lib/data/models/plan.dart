@@ -17,7 +17,7 @@ class Plan extends Equatable {
 
   final String id;
 
-  /// `workout.wkt_name` from the file, e.g. "Total Body S2-4".
+  /// `workout.wkt_name` from the file, e.g. "Full Body Sample".
   final String name;
 
   /// The file the plan came from, shown in the import preview and settings.

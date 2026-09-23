@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../bloc/app_bloc.dart';
 import '../../core/widgets/gimmy_page_route.dart';
 import '../../core/widgets/gimmy_scaffold.dart';
 import '../../data/models/plan.dart';
@@ -119,6 +120,9 @@ class _ExecutionHostState extends State<_ExecutionHost> {
         label: 'Workout',
         leading: BackButton(onPressed: () => Navigator.of(context).maybePop()),
         child: ExecutionPage(
+          areCuesEnabled: context.select(
+            (AppBloc bloc) => bloc.state.settings.areCuesEnabled,
+          ),
           // `pop`, not `maybePop`: the PopScope above would otherwise ask the
           // user to confirm leaving a workout they have already finished.
           onDone: () => Navigator.of(context).pop(),

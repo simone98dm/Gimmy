@@ -17,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/pump_until.dart';
 import '../support/silent_cues.dart';
+import '../support/fake_heart_rate_monitor.dart';
 
 /// Acceptance: running a workout to the end records it and the Dashboard
 /// reflects it — streak up, marker on today.
@@ -83,7 +84,9 @@ void main() {
               sessionRepository: sessionRepository,
               settingsRepository: context.read<SettingsRepository>(),
             )..add(const AppStarted()),
-            child: MaterialApp(theme: AppTheme.dark, home: const HomeShell()),
+            child: withHeartRate(
+              MaterialApp(theme: AppTheme.dark, home: const HomeShell()),
+            ),
           ),
         ),
       );
