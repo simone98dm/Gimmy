@@ -3,21 +3,25 @@
 A gym assistant that imports a Garmin `.fit` workout plan, walks you through it one step at a
 time, and keeps a streak and a calendar of everything you have done.
 
+|                                         |                                               |
+| --------------------------------------- | --------------------------------------------- | -------------------------------------- |
+| ![home page](docs/assets/home-page.png) | ![workout](docs/assets/workout-plan-page.png) | ![import](docs/assets/import-page.png) |
+
 Everything stays on the device. There is no backend, no account, and the app makes no network
 requests at all — the `.fit` file you pick is parsed locally and never leaves your phone.
 
-| | |
-| --- | --- |
-| **Platforms** | iOS · Android · Web |
-| **Framework** | Flutter 3.47 (Dart 3.13), Material 3 |
-| **State** | Bloc (`flutter_bloc`) |
-| **Storage** | Local files on mobile, browser local storage on web |
-| **Tests** | 153, covering the FIT parser, the streak, the execution state machine, and full user flows |
+|               |                                                                                            |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| **Platforms** | iOS · Android · Web                                                                        |
+| **Framework** | Flutter 3.47 (Dart 3.13), Material 3                                                       |
+| **State**     | Bloc (`flutter_bloc`)                                                                      |
+| **Storage**   | Local files on mobile, browser local storage on web                                        |
+| **Tests**     | 153, covering the FIT parser, the streak, the execution state machine, and full user flows |
 
 ## What it does
 
 **Import.** Pick a Garmin workout `.fit` file. Gimmy validates it — signature, CRC, and that it is
-a *workout* rather than an activity or a course — expands its repeat blocks into a flat list, and
+a _workout_ rather than an activity or a course — expands its repeat blocks into a flat list, and
 shows you the whole thing before you commit to it. A file that is not a usable workout is rejected
 with a reason, and nothing is written.
 
@@ -87,17 +91,17 @@ Gimmy decodes FIT itself (`lib/data/fit/fit_decoder.dart`) rather than using a p
 
 The reasoning behind the choices that shaped this app is in [`docs/adr/`](docs/adr/):
 
-| | |
-| --- | --- |
-| [0001](docs/adr/0001-bloc-for-state-management.md) | Bloc for state management |
-| [0002](docs/adr/0002-json-documents-over-a-database.md) | JSON documents instead of a database |
-| [0003](docs/adr/0003-own-fit-decoder.md) | Decoding FIT ourselves |
-| [0004](docs/adr/0004-unfiltered-file-picker.md) | An unfiltered file picker |
-| [0005](docs/adr/0005-light-palette-contrast.md) | Departing from the design system's light palette |
-| [0006](docs/adr/0006-single-active-plan.md) | One active plan, not a library |
-| [0007](docs/adr/0007-fractional-timer-thresholds.md) | Fractional timer colour thresholds |
-| [0008](docs/adr/0008-compile-time-feature-flags.md) | Compile-time flags for metrics with no data |
-| [0009](docs/adr/0009-platform-split-storage.md) | Platform-split storage behind one interface |
+|                                                         |                                                  |
+| ------------------------------------------------------- | ------------------------------------------------ |
+| [0001](docs/adr/0001-bloc-for-state-management.md)      | Bloc for state management                        |
+| [0002](docs/adr/0002-json-documents-over-a-database.md) | JSON documents instead of a database             |
+| [0003](docs/adr/0003-own-fit-decoder.md)                | Decoding FIT ourselves                           |
+| [0004](docs/adr/0004-unfiltered-file-picker.md)         | An unfiltered file picker                        |
+| [0005](docs/adr/0005-light-palette-contrast.md)         | Departing from the design system's light palette |
+| [0006](docs/adr/0006-single-active-plan.md)             | One active plan, not a library                   |
+| [0007](docs/adr/0007-fractional-timer-thresholds.md)    | Fractional timer colour thresholds               |
+| [0008](docs/adr/0008-compile-time-feature-flags.md)     | Compile-time flags for metrics with no data      |
+| [0009](docs/adr/0009-platform-split-storage.md)         | Platform-split storage behind one interface      |
 
 ## Known gaps
 

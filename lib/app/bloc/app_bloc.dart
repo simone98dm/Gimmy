@@ -26,6 +26,25 @@ class AppBloc extends Bloc<AppEvent, AppState> {
        super(const AppState()) {
     on<AppStarted>(_onStarted);
     on<AppThemeModeChanged>(_onThemeModeChanged);
+    on<AppCuesToggled>(
+      (event, emit) => _saveSettings(
+        state.settings.copyWith(areCuesEnabled: event.isEnabled),
+        emit,
+      ),
+    );
+    on<AppHeartRateMonitorPaired>(
+      (event, emit) => _saveSettings(
+        state.settings.copyWith(
+          heartRateMonitorId: event.id,
+          heartRateMonitorName: event.name,
+        ),
+        emit,
+      ),
+    );
+    on<AppHeartRateMonitorForgotten>(
+      (event, emit) =>
+          _saveSettings(state.settings.withoutHeartRateMonitor(), emit),
+    );
     on<AppWipeRequested>(_onWipeRequested);
   }
 
@@ -52,9 +71,18 @@ class AppBloc extends Bloc<AppEvent, AppState> {
     AppThemeModeChanged event,
     Emitter<AppState> emit,
   ) async {
-    final settings = state.settings.copyWith(themeMode: event.themeMode);
     // Emit first: the theme should switch under the user's finger, not after
     // a disk write.
+    await _saveSettings(
+      state.settings.copyWith(themeMode: event.themeMode),
+      emit,
+    );
+  }
+
+  Future<void> _saveSettings(
+    AppSettings settings,
+    Emitter<AppState> emit,
+  ) async {
     emit(state.copyWith(settings: settings));
     await _settingsRepository.save(settings);
   }

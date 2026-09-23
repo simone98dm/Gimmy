@@ -7,6 +7,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../core/util/duration_format.dart';
 import '../../../core/widgets/plan_step_tile.dart';
 import '../../../data/models/plan_step.dart';
+import '../../heart_rate/bloc/heart_rate_bloc.dart';
 import '../bloc/execution_bloc.dart';
 import '../widgets/completion_summary.dart';
 import '../widgets/execution_controls.dart';
@@ -23,10 +24,17 @@ import '../workout_cues.dart';
 /// controls — then the next-up card and the form tip. The completion summary
 /// arrives as a modal over the top of it, not as a separate page.
 class ExecutionPage extends StatefulWidget {
-  const ExecutionPage({super.key, required this.onDone});
+  const ExecutionPage({
+    super.key,
+    required this.onDone,
+    this.areCuesEnabled = true,
+  });
 
   /// Leaves the workout, back to the Dashboard.
   final VoidCallback onDone;
+
+  /// The user's Settings choice for step and completion cues.
+  final bool areCuesEnabled;
 
   @override
   State<ExecutionPage> createState() => _ExecutionPageState();
@@ -45,7 +53,7 @@ class _ExecutionPageState extends State<ExecutionPage> {
       listener: (context, state) {
         final cue = cueFor(_previous, state);
         _previous = state;
-        if (cue != null) WorkoutCues.play(cue);
+        if (cue != null && widget.areCuesEnabled) WorkoutCues.play(cue);
       },
       builder: (context, state) {
         return Stack(
@@ -53,10 +61,7 @@ class _ExecutionPageState extends State<ExecutionPage> {
             Positioned.fill(child: _Workout(state: state)),
             if (state.isFinished)
               Positioned.fill(
-                child: CompletionSummary(
-                  state: state,
-                  onDone: widget.onDone,
-                ),
+                child: CompletionSummary(state: state, onDone: widget.onDone),
               ),
           ],
         );
@@ -251,9 +256,7 @@ class _StageCard extends StatelessWidget {
           const SizedBox(height: GimmySpacing.xs),
           _Dial(state: state, step: step),
           const SizedBox(height: GimmySpacing.md),
-          const MetricStrip(),
-          if (FeatureFlags.showAnyMetric)
-            const SizedBox(height: GimmySpacing.md),
+          const _Metrics(),
           ExecutionControls(
             state: state,
             onAdjust: () => bloc.add(const ExecutionTimerAdjusted()),
@@ -271,6 +274,28 @@ class _StageCard extends StatelessWidget {
     StepType.reps => 'Tap Next when the set is done',
     StepType.open => 'Tap Next whenever you are ready',
   };
+}
+
+/// The metric strip and the gap under it, both gone when there is nothing to
+/// show.
+class _Metrics extends StatelessWidget {
+  const _Metrics();
+
+  @override
+  Widget build(BuildContext context) {
+    final isPaired = context.select(
+      (HeartRateBloc bloc) => bloc.state.link != HeartRateLink.none,
+    );
+    final bpm = context.select((HeartRateBloc bloc) => bloc.state.bpm);
+    if (!isPaired && !FeatureFlags.showAnyMetric) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: GimmySpacing.md),
+      child: MetricStrip(showBpm: isPaired, bpm: bpm),
+    );
+  }
 }
 
 /// The left chip: what kind of step this is.

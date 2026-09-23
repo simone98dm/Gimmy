@@ -14,10 +14,12 @@ import 'package:gimmy/features/execution/view/execution_page.dart';
 
 import '../../support/test_fonts.dart';
 import 'execution_bloc_test.dart' show FakeTicker;
+import '../../support/fake_heart_rate_monitor.dart';
+import '../../support/sample_fit.dart';
 
 Plan sample() => FitWorkoutParser.parse(
-  bytes: File('docs/TotalBody_Sett2-4.fit').readAsBytesSync(),
-  filename: 'TotalBody_Sett2-4.fit',
+  bytes: sampleFitBytes(),
+  filename: sampleFitFilename,
   planId: 'plan-1',
   importedAt: DateTime(2026, 9, 22, 10),
 );
@@ -65,14 +67,16 @@ void main() {
     addTearDown(bloc.close);
 
     await tester.pumpWidget(
-      MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
-        home: BlocProvider.value(
-          value: bloc,
-          child: GimmyScaffold(
-            label: 'Workout',
-            child: ExecutionPage(onDone: () {}),
+      withHeartRate(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
+          home: BlocProvider.value(
+            value: bloc,
+            child: GimmyScaffold(
+              label: 'Workout',
+              child: ExecutionPage(onDone: () {}),
+            ),
           ),
         ),
       ),
@@ -109,7 +113,7 @@ void main() {
       tester,
       name: 'execution_reps',
       drive: (bloc) async {
-        // Step 2 of the sample is Leg press, 12 reps.
+        // Step 2 of the sample is Squat, 10 reps.
         bloc.add(const ExecutionSkipped());
         await pumpEventQueue(times: 50);
       },

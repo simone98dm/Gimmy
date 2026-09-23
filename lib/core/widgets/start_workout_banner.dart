@@ -122,7 +122,7 @@ class StartWorkoutBanner extends StatelessWidget {
 
   static int _exerciseCount(Plan plan) => _exercises(plan).length;
 
-  /// "Leg press • Leg extension • Leg curl …", clipped to one line by the
+  /// "Squat • Row left • Row right …", clipped to one line by the
   /// caller. Falls back to the warmup and cooldown when a plan is all rest.
   static String _exerciseSummary(Plan plan) {
     final names = _exercises(plan);

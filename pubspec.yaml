@@ -54,6 +54,7 @@ dependencies:
 
   # Month names / date formatting in the calendar
   intl: ^0.20.2
+  flutter_blue_plus: ^2.3.13
 
 dev_dependencies:
   flutter_test:
