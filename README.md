@@ -3,7 +3,7 @@
 A gym assistant that imports a Garmin `.fit` workout plan, walks you through it one step at a
 time, and keeps a streak and a calendar of everything you have done.
 
-|                                         |                                               |
+|                                         |                                               |                                        |
 | --------------------------------------- | --------------------------------------------- | -------------------------------------- |
 | ![home page](docs/assets/home-page.png) | ![workout](docs/assets/workout-plan-page.png) | ![import](docs/assets/import-page.png) |
 
