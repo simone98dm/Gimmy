@@ -22,7 +22,7 @@ abstract final class FeatureFlags {
 abstract final class AppConfig {
   /// Shown on the About and Legal pages. Bumped by release-please together
   /// with `version:` in pubspec.yaml — do not edit by hand.
-  static const String appVersion = '1.1.0'; // x-release-please-version
+  static const String appVersion = '1.2.0'; // x-release-please-version
 
   /// Who built it: the About page credit and the copyright line.
   static const String author = 'simone98dm';

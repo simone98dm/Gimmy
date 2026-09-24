@@ -5,6 +5,14 @@ written by [release-please](https://github.com/googleapis/release-please) from
 [Conventional Commits](https://www.conventionalcommits.org/); do not edit the
 released sections by hand.
 
+## [1.2.0](https://github.com/simone98dm/Gimmy/compare/v1.1.0...v1.2.0) (2026-09-24)
+
+
+### Features
+
+* **settings:** add desktop-specific settings components ([cdc7414](https://github.com/simone98dm/Gimmy/commit/cdc74144fdb5c885ea339195e287dbdb3f119486))
+* **settings:** add desktop-specific settings components and improve layout ([f029e20](https://github.com/simone98dm/Gimmy/commit/f029e20a016dbe8b233836dee115b1eb528b93e5))
+
 ## [1.1.0](https://github.com/simone98dm/Gimmy/compare/v1.0.0...v1.1.0) (2026-09-23)
 
 
