@@ -212,12 +212,23 @@ abstract final class AppTheme {
           ),
           side: WidgetStatePropertyAll(BorderSide(color: tokens.cardBorder)),
           textStyle: WidgetStatePropertyAll(textTheme.labelMedium),
+          minimumSize: const WidgetStatePropertyAll(
+            Size(0, GimmyLayout.minTapTarget),
+          ),
         ),
       ),
+      // Material's text and icon buttons default to 40px, under the 44px the
+      // design system asks of every control.
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: scheme.primary,
           textStyle: textTheme.labelMedium,
+          minimumSize: const Size.square(GimmyLayout.minTapTarget),
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          minimumSize: const Size.square(GimmyLayout.minTapTarget),
         ),
       ),
       iconTheme: IconThemeData(color: scheme.onSurface, size: 24),

@@ -91,7 +91,7 @@ void main() {
         ),
       );
       // The Dashboard opens with no streak and the plan ready to run.
-      await pumpUntilFound(tester, find.text('0 DAYS STREAK'));
+      await pumpUntilFound(tester, find.text('START A STREAK TODAY'));
       await pumpUntilFound(tester, find.text('START WORKOUT'));
 
       await tester.tap(find.text('START WORKOUT'));
@@ -104,22 +104,22 @@ void main() {
       // Reps and open steps advance on Next. The control is icon-only, so it
       // is addressed the way a screen reader would.
       for (var step = 0; step < 3; step++) {
-        await tester.tap(find.bySemanticsLabel('Next'));
+        await tester.tap(find.bySemanticsLabel('Done'));
         await pumpUntil(
           tester,
           () =>
               find.text('STEP ${step + 2} OF 3').evaluate().isNotEmpty ||
-              find.text('Workout crushed! 🎉').evaluate().isNotEmpty,
+              find.text('Workout done').evaluate().isNotEmpty,
           reason: 'step ${step + 2} or the summary',
         );
       }
 
-      expect(find.text('Workout crushed! 🎉'), findsOneWidget);
+      expect(find.text('Workout done'), findsOneWidget);
       expect(find.text('3/3'), findsOneWidget, reason: 'all steps completed');
-      expect(find.text('100% completed'), findsOneWidget);
+      expect(find.text('None skipped'), findsOneWidget);
 
       await tester.tap(find.text('Return to Dashboard'));
-      await pumpUntilGone(tester, find.text('Workout crushed! 🎉'));
+      await pumpUntilGone(tester, find.text('Workout done'));
 
       // The Dashboard reloads from disk, so this has to be awaited inside
       // `runAsync` — outside it the read would never complete.

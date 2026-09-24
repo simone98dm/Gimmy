@@ -107,10 +107,11 @@ class GimmyTokens extends ThemeExtension<GimmyTokens> {
     fontFeatures: [FontFeature.tabularFigures()],
   );
 
+  // Read from a phone on the floor, one to two metres away, mid-set.
   static const _monoDisplayMobile = TextStyle(
     fontFamily: GimmyFonts.mono,
-    fontSize: 32,
-    height: 36 / 32,
+    fontSize: 72,
+    height: 1,
     fontWeight: FontWeight.w700,
     fontFeatures: [FontFeature.tabularFigures()],
   );

@@ -29,14 +29,17 @@ class ExecutionControls extends StatelessWidget {
     final (icon, label) = switch (state.primaryAction) {
       PrimaryAction.play => (Icons.play_arrow, 'Play'),
       PrimaryAction.pause => (Icons.pause, 'Pause'),
-      PrimaryAction.next => (Icons.skip_next, 'Next'),
+      // A tick, not skip-next: Skip sits beside it and must not look alike.
+      PrimaryAction.next => (Icons.check, 'Done'),
     };
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         _SecondaryControl(
-          icon: Icons.replay_10,
+          // Text, not replay_10: that icon means rewind, and this takes time
+          // off the countdown.
+          text: '−${AppConfig.timerAdjustmentSeconds}',
           label: 'Subtract ${AppConfig.timerAdjustmentSeconds} seconds',
           // Timer steps only, as specified.
           onPressed: state.canAdjustTimer ? onAdjust : null,
@@ -105,18 +108,21 @@ class _PrimaryControl extends StatelessWidget {
 
 class _SecondaryControl extends StatelessWidget {
   const _SecondaryControl({
-    required this.icon,
+    this.icon,
+    this.text,
     required this.label,
     required this.onPressed,
-  });
+  }) : assert((icon == null) != (text == null), 'an icon or a text, not both');
 
-  final IconData icon;
+  final IconData? icon;
+  final String? text;
   final String label;
   final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tokens = GimmyTokens.of(context);
     final isEnabled = onPressed != null;
     final color = isEnabled
         ? theme.colorScheme.onSurface
@@ -138,11 +144,45 @@ class _SecondaryControl extends StatelessWidget {
             child: SizedBox(
               width: 48,
               height: 48,
-              child: Icon(icon, size: 24, color: color),
+              child: Center(
+                child: icon != null
+                    ? Icon(icon, size: 24, color: color)
+                    : Text(
+                        text!,
+                        style: tokens.metricMd.copyWith(
+                          color: color,
+                          fontSize: 16,
+                        ),
+                      ),
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Ends the workout early, through the same confirmation as the back button.
+///
+/// "End", not "Finish": the session is recorded as abandoned, and "Finish"
+/// reads as the happy ending.
+class EndWorkoutButton extends StatelessWidget {
+  const EndWorkoutButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return TextButton.icon(
+      onPressed: () => Navigator.of(context).maybePop(),
+      style: TextButton.styleFrom(
+        foregroundColor: theme.colorScheme.onSurfaceVariant,
+        minimumSize: const Size(GimmyLayout.minTapTarget, 48),
+        tapTargetSize: MaterialTapTargetSize.padded,
+      ),
+      icon: const Icon(Icons.stop, size: 18),
+      label: const Text('End'),
     );
   }
 }

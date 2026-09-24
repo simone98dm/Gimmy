@@ -1,8 +1,7 @@
-import 'package:flutter/foundation.dart';
-
 import '../models/workout_session.dart';
 import 'document_store.dart';
 import 'open_document_store.dart';
+import '../../core/logging/app_log.dart';
 
 /// Stores every workout session, newest last.
 ///
@@ -28,8 +27,10 @@ class SessionRepository {
         ),
       );
     } on Object catch (error) {
-      debugPrint(
-        'gimmy: session history could not be read, discarding it: $error',
+      AppLog.error(
+        'storage',
+        'session history unreadable, discarding it',
+        error,
       );
       await _store.delete();
       return const [];

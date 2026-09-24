@@ -80,21 +80,21 @@ void main() {
         ),
       );
       // With nothing stored, Import opens by itself and cannot be dismissed.
-      await pumpUntilFound(tester, find.text('Import Workout'));
+      await pumpUntilFound(tester, find.text('Import a workout'));
       expect(find.byType(BackButton), findsNothing);
 
       await tester.tap(find.text('Select .FIT File'));
       await pumpUntilFound(tester, find.text('Confirm & Save Plan'));
 
       await tester.tap(find.text('Confirm & Save Plan'));
-      await pumpUntilGone(tester, find.text('Import Workout'));
+      await pumpUntilGone(tester, find.text('Import a workout'));
     });
 
     // The import page is gone and the Dashboard is showing. There is no page
     // heading to assert on — the prototype opens straight into the streak —
     // so this checks the things the Dashboard is actually made of.
-    expect(find.text('Import Workout'), findsNothing);
-    expect(find.text('0 DAYS STREAK'), findsOneWidget);
+    expect(find.text('Import a workout'), findsNothing);
+    expect(find.text('START A STREAK TODAY'), findsOneWidget);
     expect(find.text(sampleFitPlanName), findsOneWidget);
     expect(find.text('START WORKOUT'), findsOneWidget);
   });

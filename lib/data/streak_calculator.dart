@@ -48,6 +48,20 @@ abstract final class StreakCalculator {
     return sessions.any((s) => s.localDay == today);
   }
 
+  /// The longest run of consecutive workout days ever recorded.
+  static int longest(Iterable<WorkoutSession> sessions) {
+    final days = sessions.map((s) => s.localDay).toSet().toList()..sort();
+    var best = 0;
+    var run = 0;
+    DateTime? previous;
+    for (final day in days) {
+      run = previous != null && _dayBefore(day) == previous ? run + 1 : 1;
+      if (run > best) best = run;
+      previous = day;
+    }
+    return best;
+  }
+
   static DateTime _startOfDay(DateTime moment) =>
       DateTime(moment.year, moment.month, moment.day);
 

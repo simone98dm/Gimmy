@@ -284,6 +284,39 @@ void main() {
       expect(bloc.state.status, ExecutionStatus.completed);
       expect(bloc.state.stepsSkipped, 1);
     });
+
+    test('undo returns to the skipped step with its timer reset', () async {
+      final bloc = await started(planOf([timer('Rest', 60), reps('Row', 8)]));
+      addTearDown(bloc.close);
+
+      bloc.add(const ExecutionSkipped());
+      await pumpEventQueue(times: 50);
+      expect(bloc.state.canUndoSkip, isTrue);
+
+      bloc.add(const ExecutionSkipUndone());
+      await pumpEventQueue(times: 50);
+
+      expect(bloc.state.currentStep?.name, 'Rest');
+      expect(bloc.state.remainingSeconds, 60);
+      expect(bloc.state.isTimerRunning, isFalse);
+      expect(bloc.state.stepsSkipped, 0);
+      expect(bloc.state.canUndoSkip, isFalse);
+    });
+
+    test('undo is not offered after a step is done normally', () async {
+      final bloc = await started(planOf([reps('Squat', 10), reps('Row', 8)]));
+      addTearDown(bloc.close);
+
+      bloc.add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 50);
+      expect(bloc.state.canUndoSkip, isFalse);
+
+      bloc.add(const ExecutionSkipUndone());
+      await pumpEventQueue(times: 50);
+
+      expect(bloc.state.currentStep?.name, 'Row');
+      expect(bloc.state.stepsCompleted, 1);
+    });
   });
 
   group('finishing', () {

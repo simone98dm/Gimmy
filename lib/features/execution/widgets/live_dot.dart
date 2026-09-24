@@ -33,9 +33,10 @@ class _LiveDotState extends State<LiveDot> with SingleTickerProviderStateMixin {
     if (widget.isLive) {
       _controller.repeat(reverse: true);
     } else {
+      // Back to dim: a bright, still dot reads as live while paused.
       _controller
         ..stop()
-        ..value = 1;
+        ..value = 0;
     }
   }
 

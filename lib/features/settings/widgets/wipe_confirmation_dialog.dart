@@ -8,6 +8,7 @@ import '../../../core/theme/tokens.dart';
 /// data.
 Future<bool> confirmWipe(BuildContext context) async {
   final confirmed = await showDialog<bool>(
+    routeSettings: const RouteSettings(name: 'wipe dialog'),
     context: context,
     builder: (dialogContext) {
       final theme = Theme.of(dialogContext);

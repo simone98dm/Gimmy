@@ -10,6 +10,7 @@ import '../../../data/models/plan_step.dart';
 import '../../../data/models/workout_session.dart';
 import '../../../data/storage/session_repository.dart';
 import 'ticker.dart';
+import '../../../core/logging/app_log.dart';
 
 part 'execution_event.dart';
 part 'execution_state.dart';
@@ -45,6 +46,7 @@ class ExecutionBloc extends Bloc<ExecutionEvent, ExecutionState> {
     on<ExecutionStarted>(_onStarted);
     on<ExecutionPrimaryPressed>(_onPrimaryPressed);
     on<ExecutionSkipped>(_onSkipped);
+    on<ExecutionSkipUndone>(_onSkipUndone);
     on<ExecutionTimerAdjusted>(_onTimerAdjusted);
     on<ExecutionTicked>(_onTicked);
     on<ExecutionAbandoned>(_onAbandoned);
@@ -77,7 +79,7 @@ class ExecutionBloc extends Bloc<ExecutionEvent, ExecutionState> {
 
     switch (state.primaryAction) {
       case PrimaryAction.play:
-        emit(state.copyWith(isTimerRunning: true));
+        emit(state.copyWith(isTimerRunning: true, canUndoSkip: false));
       case PrimaryAction.pause:
         emit(state.copyWith(isTimerRunning: false));
       case PrimaryAction.next:
@@ -91,6 +93,21 @@ class ExecutionBloc extends Bloc<ExecutionEvent, ExecutionState> {
   ) async {
     if (state.isFinished) return;
     await _advance(emit, skipped: true);
+  }
+
+  void _onSkipUndone(ExecutionSkipUndone event, Emitter<ExecutionState> emit) {
+    if (state.isFinished || !state.canUndoSkip) return;
+
+    final previous = state.currentIndex - 1;
+    emit(
+      state.copyWith(
+        currentIndex: previous,
+        remainingSeconds: state.plan.steps[previous].durationSeconds ?? 0,
+        isTimerRunning: false,
+        stepsSkipped: state.stepsSkipped - 1,
+        canUndoSkip: false,
+      ),
+    );
   }
 
   Future<void> _onTimerAdjusted(
@@ -145,6 +162,7 @@ class ExecutionBloc extends Bloc<ExecutionEvent, ExecutionState> {
       return;
     }
 
+    AppLog.info('workout', 'step ${state.stepNumber} timer ran out');
     await _advance(
       emit,
       skipped: false,
@@ -177,6 +195,7 @@ class ExecutionBloc extends Bloc<ExecutionEvent, ExecutionState> {
     final tallied = current.copyWith(
       stepsCompleted: current.stepsCompleted + (skipped ? 0 : 1),
       stepsSkipped: current.stepsSkipped + (skipped ? 1 : 0),
+      canUndoSkip: skipped,
     );
 
     final nextIndex = current.currentIndex + 1;
@@ -212,6 +231,12 @@ class ExecutionBloc extends Bloc<ExecutionEvent, ExecutionState> {
     _tickerSubscription?.cancel();
     _tickerSubscription = null;
     await _saveSession(state, endedAt: _now());
+    AppLog.info(
+      'workout',
+      '${state.status.name} "${state.plan.name}": '
+          '${state.stepsCompleted} done, ${state.stepsSkipped} skipped, '
+          '${state.totalActiveSeconds}s active',
+    );
   }
 
   Future<void> _saveSession(ExecutionState state, {DateTime? endedAt}) async {

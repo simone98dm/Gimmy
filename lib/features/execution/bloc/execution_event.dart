@@ -23,6 +23,11 @@ class ExecutionSkipped extends ExecutionEvent {
   const ExecutionSkipped();
 }
 
+/// Puts back the step that was just skipped.
+class ExecutionSkipUndone extends ExecutionEvent {
+  const ExecutionSkipUndone();
+}
+
 /// The −10s control.
 class ExecutionTimerAdjusted extends ExecutionEvent {
   const ExecutionTimerAdjusted();

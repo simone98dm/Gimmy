@@ -106,7 +106,7 @@ class _Cell extends StatelessWidget {
             Text(
               label.toUpperCase(),
               style: tokens.labelMono.copyWith(
-                color: theme.colorScheme.outline,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 2),
@@ -114,14 +114,16 @@ class _Cell extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (icon != null) ...[
-                  Icon(icon, size: 12, color: iconColor),
-                  const SizedBox(width: 2),
+                  Icon(icon, size: 20, color: iconColor),
+                  const SizedBox(width: GimmySpacing.xs),
                 ],
                 Text(
                   value,
-                  style: tokens.labelMono.copyWith(
+                  // Glanceable from the floor, like the countdown above it.
+                  style: tokens.metricMd.copyWith(
                     color: valueColor ?? theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 28,
+                    height: 1,
                   ),
                 ),
               ],

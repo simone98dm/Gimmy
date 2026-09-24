@@ -3,17 +3,19 @@ import 'package:flutter/material.dart';
 import '../theme/gimmy_tokens.dart';
 import '../theme/tokens.dart';
 
-/// A mono eyebrow over a heading, the pattern every Stitch screen opens with.
+/// A page heading, with an optional mono eyebrow above it.
+///
+/// Use the eyebrow sparingly: one on every page stops it saying anything.
 class SectionHeading extends StatelessWidget {
   const SectionHeading({
     super.key,
-    required this.eyebrow,
+    this.eyebrow,
     required this.title,
     this.subtitle,
     this.trailing,
   });
 
-  final String eyebrow;
+  final String? eyebrow;
   final String title;
   final String? subtitle;
   final Widget? trailing;
@@ -30,14 +32,16 @@ class SectionHeading extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                eyebrow.toUpperCase(),
-                style: tokens.labelMono.copyWith(
-                  color: theme.colorScheme.primary,
-                  letterSpacing: 1.2,
+              if (eyebrow case final eyebrow?) ...[
+                Text(
+                  eyebrow.toUpperCase(),
+                  style: tokens.labelMono.copyWith(
+                    color: theme.colorScheme.primary,
+                    letterSpacing: 1.2,
+                  ),
                 ),
-              ),
-              const SizedBox(height: GimmySpacing.xs),
+                const SizedBox(height: GimmySpacing.xs),
+              ],
               Text(title, style: theme.textTheme.headlineLarge),
               if (subtitle != null) ...[
                 const SizedBox(height: GimmySpacing.xs),

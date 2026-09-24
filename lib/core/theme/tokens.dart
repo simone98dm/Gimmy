@@ -106,7 +106,8 @@ abstract final class GimmyPalette {
   // #F5B800 / #D50000). Those are used as *foregrounds* here — the timer ring,
   // the countdown digits, intensity labels — and against #FAFAFA they measure
   // 2.14 / 1.71 / 5.25 contrast. The first two fail even the 3:1 bar for
-  // graphics. These replacements hold the same hues at >=4.4:1.
+  // graphics. These replacements hold the same hues at >=4.5:1, since they colour small
+  // labels as well as graphics.
   // ---------------------------------------------------------------------------
   static const darkAccentEmerald = Color(0xFF00E676);
   static const darkAccentAmber = Color(0xFFFFD600);
@@ -116,7 +117,7 @@ abstract final class GimmyPalette {
   static const logoTile = Color(0xFF121212);
   static const logoAccent = Color(0xFF00E676);
 
-  static const lightAccentEmerald = Color(0xFF00873A);
+  static const lightAccentEmerald = Color(0xFF007A34);
   static const lightAccentAmber = Color(0xFF8A6200);
   static const lightAccentRed = Color(0xFFC62300);
 }
@@ -160,6 +161,18 @@ abstract final class GimmyLayout {
 
   /// Primary CTA height, sized for tapping under fatigue.
   static const double ctaHeight = 52;
+
+  /// From this width the web build swaps the bottom nav for a sidebar and
+  /// lays pages out in columns, as the Stitch desktop screens do.
+  static const double desktopBreakpoint = 1200;
+
+  static const double sidebarWidth = 288;
+
+  /// Content stops growing here; past it the extra width is background.
+  static const double desktopMaxContentWidth = 1280;
+
+  /// Prose pages (About, Legal) stop here: about 75 characters a line.
+  static const double readingWidth = 680;
 }
 
 abstract final class GimmyFonts {

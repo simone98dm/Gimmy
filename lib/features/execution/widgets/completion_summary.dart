@@ -44,6 +44,31 @@ class CompletionSummary extends StatelessWidget {
   }
 }
 
+/// How the session went, which sets the tone of the summary.
+///
+/// Reaching the last step is not the same as doing the workout: skipping every
+/// step also gets there, and should not be celebrated.
+enum _Outcome {
+  /// Most of the plan was actually done.
+  strong,
+
+  /// Some steps were done.
+  partial,
+
+  /// Nothing was done.
+  empty;
+
+  static const _strongShare = 0.8;
+
+  static _Outcome of(ExecutionState state) {
+    if (state.stepsCompleted == 0) return empty;
+    final share = state.stepsCompleted / state.totalSteps;
+    final isStrong =
+        state.status == ExecutionStatus.completed && share >= _strongShare;
+    return isStrong ? strong : partial;
+  }
+}
+
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({required this.state, required this.onDone});
 
@@ -54,8 +79,9 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tokens = GimmyTokens.of(context);
-    final wasCompleted = state.status == ExecutionStatus.completed;
-    final everyStepDone = state.stepsSkipped == 0;
+    final outcome = _Outcome.of(state);
+    final noneSkipped = state.stepsSkipped == 0;
+    final hasActiveTime = state.totalActiveSeconds > 0;
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 420),
@@ -70,16 +96,20 @@ class _SummaryCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(height: GimmySpacing.sm),
-          _Trophy(isCelebratory: wasCompleted),
+          _Badge(outcome: outcome),
           const SizedBox(height: GimmySpacing.sm),
           Text(
-            wasCompleted ? 'Workout crushed! 🎉' : 'Workout ended',
+            switch (outcome) {
+              _Outcome.strong => 'Workout done',
+              _Outcome.partial => 'Session logged',
+              _Outcome.empty => 'Nothing recorded',
+            },
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineMedium,
           ),
           const SizedBox(height: GimmySpacing.xs),
           Text(
-            state.plan.name,
+            '${state.plan.name} · ${DateFormat.MMMd().add_jm().format(state.startedAt)}',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -90,53 +120,28 @@ class _SummaryCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _MetricTile(
-                  label: 'Date & time',
-                  value: DateFormat.MMMd().add_jm().format(state.startedAt),
-                  footnote: _timeOfDay(state.startedAt),
-                ),
-              ),
-              const SizedBox(width: GimmySpacing.xs),
-              Expanded(
-                child: _MetricTile(
-                  label: 'Total time',
-                  value: DurationFormat.human(
-                    Duration(seconds: state.totalActiveSeconds),
-                  ),
-                  footnote: 'Active time',
-                  isMetric: true,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: GimmySpacing.xs),
-          Row(
-            children: [
-              Expanded(
-                child: _MetricTile(
-                  label: 'Steps',
+                  label: 'Steps done',
                   value: '${state.stepsCompleted}/${state.totalSteps}',
-                  footnote: everyStepDone
-                      ? '100% completed'
+                  footnote: noneSkipped
+                      ? 'None skipped'
                       : '${state.stepsSkipped} skipped',
-                  footnoteColor: everyStepDone
-                      ? tokens.intensityActive
-                      : tokens.intensityRest,
-                  isMetric: true,
-                ),
-              ),
-              const SizedBox(width: GimmySpacing.xs),
-              Expanded(
-                child: _MetricTile(
-                  label: 'Outcome',
-                  value: wasCompleted ? 'Complete' : 'Partial',
-                  footnote: wasCompleted
-                      ? 'Reached the last step'
-                      : 'Ended early',
-                  footnoteColor: wasCompleted
+                  footnoteColor: noneSkipped
                       ? tokens.intensityActive
                       : tokens.intensityRest,
                 ),
               ),
+              if (hasActiveTime) ...[
+                const SizedBox(width: GimmySpacing.xs),
+                Expanded(
+                  child: _MetricTile(
+                    label: 'Active time',
+                    value: DurationFormat.human(
+                      Duration(seconds: state.totalActiveSeconds),
+                    ),
+                    footnote: 'Paused time excluded',
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: GimmySpacing.md),
@@ -149,43 +154,42 @@ class _SummaryCard extends StatelessWidget {
       ),
     );
   }
-
-  static String _timeOfDay(DateTime at) {
-    if (at.hour < 12) return 'Morning session';
-    if (at.hour < 18) return 'Afternoon session';
-    return 'Evening session';
-  }
 }
 
-class _Trophy extends StatelessWidget {
-  const _Trophy({required this.isCelebratory});
+class _Badge extends StatelessWidget {
+  const _Badge({required this.outcome});
 
-  final bool isCelebratory;
+  final _Outcome outcome;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final isStrong = outcome == _Outcome.strong;
+    final fill = isStrong
+        ? scheme.primaryContainer
+        : scheme.surfaceContainerHigh;
 
     return Container(
       width: 80,
       height: 80,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
+        color: fill.withValues(alpha: 0.2),
         shape: BoxShape.circle,
       ),
       child: Container(
         width: 56,
         height: 56,
         alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.primaryContainer,
-          shape: BoxShape.circle,
-        ),
+        decoration: BoxDecoration(color: fill, shape: BoxShape.circle),
         child: Icon(
-          isCelebratory ? Icons.workspace_premium : Icons.flag_outlined,
+          switch (outcome) {
+            _Outcome.strong => Icons.workspace_premium,
+            _Outcome.partial => Icons.flag_outlined,
+            _Outcome.empty => Icons.remove,
+          },
           size: 32,
-          color: theme.colorScheme.onPrimaryContainer,
+          color: isStrong ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
         ),
       ),
     );
@@ -198,16 +202,12 @@ class _MetricTile extends StatelessWidget {
     required this.value,
     required this.footnote,
     this.footnoteColor,
-    this.isMetric = false,
   });
 
   final String label;
   final String value;
   final String footnote;
   final Color? footnoteColor;
-
-  /// True for figures that should read in the tabular mono face.
-  final bool isMetric;
 
   @override
   Widget build(BuildContext context) {
@@ -225,17 +225,12 @@ class _MetricTile extends StatelessWidget {
         children: [
           Text(
             label.toUpperCase(),
-            style: tokens.labelMono.copyWith(color: theme.colorScheme.outline),
+            style: tokens.labelMono.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 2),
-          Text(
-            value,
-            style: isMetric
-                ? tokens.metricMd
-                : theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-          ),
+          Text(value, style: tokens.metricMd),
           Text(
             footnote,
             style: tokens.labelMono.copyWith(

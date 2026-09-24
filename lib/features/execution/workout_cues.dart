@@ -1,8 +1,8 @@
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'bloc/execution_bloc.dart';
+import '../../core/logging/app_log.dart';
 
 /// The two moments in a workout worth announcing without looking at the screen.
 enum WorkoutCue {
@@ -93,6 +93,6 @@ abstract final class WorkoutCues {
   }
 
   static void _report(String what, Object error, StackTrace stackTrace) {
-    debugPrint('Workout $what cue failed: $error\n$stackTrace');
+    AppLog.error('cues', '$what cue failed', error, stackTrace);
   }
 }

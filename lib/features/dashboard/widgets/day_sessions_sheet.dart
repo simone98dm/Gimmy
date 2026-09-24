@@ -13,6 +13,7 @@ Future<void> showDaySessionsSheet(
   required List<WorkoutSession> sessions,
 }) {
   return showModalBottomSheet<void>(
+    routeSettings: const RouteSettings(name: 'day-sessions sheet'),
     context: context,
     builder: (context) => _DaySessionsSheet(day: day, sessions: sessions),
   );

@@ -41,6 +41,28 @@ class Plan extends Equatable {
     ),
   );
 
+  /// The distinct working exercises, in the order they first appear.
+  List<String> get exerciseNames {
+    final seen = <String>{};
+    return [
+      for (final step in steps)
+        if (step.intensity == StepIntensity.active && seen.add(step.name))
+          step.name,
+    ];
+  }
+
+  /// Estimated seconds spent at each intensity, for the intensity mix.
+  Map<StepIntensity, int> secondsByIntensity({required int secondsPerRep}) => {
+    for (final intensity in StepIntensity.values)
+      intensity: steps
+          .where((s) => s.intensity == intensity)
+          .fold(
+            0,
+            (total, s) =>
+                total + s.estimatedSeconds(secondsPerRep: secondsPerRep),
+          ),
+  };
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,

@@ -11,8 +11,8 @@ import '../theme/tokens.dart';
 /// Importing a plan is deliberately absent: it is reached from Settings, not
 /// from the nav bar, because it is a rare one-off rather than a place you go.
 enum GimmyTab {
-  dashboard(icon: Icons.speed, label: 'Home'),
-  active(icon: Icons.fitness_center, label: 'Active'),
+  dashboard(icon: Icons.speed, label: 'Today'),
+  active(icon: Icons.fitness_center, label: 'Workout'),
   settings(icon: Icons.tune, label: 'Settings');
 
   const GimmyTab({required this.icon, required this.label});
@@ -49,14 +49,17 @@ class AppFooter extends StatelessWidget {
         ),
         child: SizedBox(
           height: GimmyLayout.footerHeight,
+          // Equal slots, not spaceAround: the labels differ in width, so
+          // spacing the gaps evenly would leave the icons off-centre.
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               for (final tab in GimmyTab.values)
-                _FooterTab(
-                  tab: tab,
-                  isSelected: tab == current,
-                  onTap: () => onSelect(tab),
+                Expanded(
+                  child: _FooterTab(
+                    tab: tab,
+                    isSelected: tab == current,
+                    onTap: () => onSelect(tab),
+                  ),
                 ),
             ],
           ),
@@ -99,6 +102,9 @@ class _FooterTab extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
+  /// Wide enough to thumb; the label sets the rest, and never wraps.
+  static const double _minTabWidth = 64;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -110,6 +116,8 @@ class _FooterTab extends StatelessWidget {
       button: true,
       selected: isSelected,
       label: tab.label,
+      // The visible label would otherwise be read a second time, in capitals.
+      excludeSemantics: true,
       // A Material *inside* the footer's background, so the splash paints on
       // top of it rather than under it.
       child: Material(
@@ -119,11 +127,11 @@ class _FooterTab extends StatelessWidget {
           borderRadius: GimmyRadii.button,
           child: ConstrainedBox(
             constraints: const BoxConstraints(
-              minWidth: GimmyLayout.minTapTarget,
+              minWidth: _minTabWidth,
               minHeight: GimmyLayout.minTapTarget,
             ),
-            child: SizedBox(
-              width: 64,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: GimmySpacing.sm),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -131,6 +139,8 @@ class _FooterTab extends StatelessWidget {
                   const SizedBox(height: GimmySpacing.xs),
                   Text(
                     tab.label.toUpperCase(),
+                    maxLines: 1,
+                    softWrap: false,
                     style: theme.textTheme.labelMedium?.copyWith(color: color),
                   ),
                 ],

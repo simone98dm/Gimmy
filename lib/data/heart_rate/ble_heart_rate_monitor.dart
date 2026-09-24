@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import 'heart_rate_monitor.dart';
+import '../../core/logging/app_log.dart';
 
 /// [HeartRateMonitor] over Bluetooth LE, using the standard Heart Rate
 /// Service.
@@ -86,7 +86,7 @@ class BleHeartRateMonitor implements HeartRateMonitor {
           subscribe().catchError((Object error) {
             // A device without the heart-rate service, or one that dropped
             // mid-discovery. autoConnect will bring it back and retry.
-            debugPrint('gimmy: heart-rate subscribe failed: $error');
+            AppLog.warning('heart-rate', 'subscribe failed, will retry', error);
           });
         });
         // License.nonprofit covers personal use only; a commercial release
@@ -96,7 +96,7 @@ class BleHeartRateMonitor implements HeartRateMonitor {
         device
             .connect(license: License.nonprofit, autoConnect: true, mtu: null)
             .catchError((Object error) {
-              debugPrint('gimmy: heart-rate connect failed: $error');
+              AppLog.warning('heart-rate', 'connect failed', error);
             });
       },
       onCancel: () async {

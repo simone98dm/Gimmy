@@ -5,9 +5,20 @@ import '../../../core/theme/tokens.dart';
 
 /// The streak, as the compact glowing pill the prototype opens with.
 class StreakPill extends StatelessWidget {
-  const StreakPill({super.key, required this.streak});
+  const StreakPill({super.key, required this.streak, this.best = 0});
 
   final int streak;
+
+  /// The longest streak so far, offered as something to beat once the
+  /// current one has lapsed.
+  final int best;
+
+  String get _label => switch ((streak, best)) {
+    (1, _) => '1 DAY STREAK',
+    (0, 0) => 'START A STREAK TODAY',
+    (0, _) => 'BEST $best · START AGAIN TODAY',
+    _ => '$streak DAYS STREAK',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +27,7 @@ class StreakPill extends StatelessWidget {
     final isAlive = streak > 0;
 
     return Semantics(
-      label: streak == 1 ? 'One day streak' : '$streak day streak',
+      label: _label.toLowerCase(),
       excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.symmetric(
@@ -36,11 +47,13 @@ class StreakPill extends StatelessWidget {
             Icon(
               Icons.local_fire_department,
               size: 16,
-              color: isAlive ? tokens.intensityRest : theme.colorScheme.outline,
+              color: isAlive
+                  ? tokens.intensityRest
+                  : theme.colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: GimmySpacing.xs),
             Text(
-              streak == 1 ? '1 DAY STREAK' : '$streak DAYS STREAK',
+              _label,
               style: tokens.labelMono.copyWith(
                 color: isAlive
                     ? theme.colorScheme.primary
