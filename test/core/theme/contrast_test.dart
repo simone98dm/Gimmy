@@ -130,6 +130,23 @@ void main() {
         }
       });
 
+      // Intensity and timer colours also colour small mono labels ("ACTIVE",
+      // "22 skipped", the calendar's session days), so they are text too.
+      test('intensity colors read as text on the page and on a card', () {
+        for (final (label, color) in [
+          ('active', tokens.intensityActive),
+          ('rest', tokens.intensityRest),
+          ('critical', tokens.timerCritical),
+        ]) {
+          for (final (surface, bg) in [
+            ('surface', scheme.surface),
+            ('card', scheme.surfaceContainer),
+          ]) {
+            expectAtLeast('$label on $surface', color, bg, kAaNormal);
+          }
+        }
+      });
+
       test('card hairlines are visible against the card they outline', () {
         expectAtLeast(
           'cardBorder',

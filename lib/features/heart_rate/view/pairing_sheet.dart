@@ -13,6 +13,7 @@ import '../bloc/heart_rate_bloc.dart';
 /// pairs one. Scanning runs for as long as the sheet is open.
 Future<void> showPairingSheet(BuildContext context) {
   return showModalBottomSheet<void>(
+    routeSettings: const RouteSettings(name: 'pairing sheet'),
     context: context,
     isScrollControlled: true,
     builder: (_) => const PairingSheet(),
@@ -73,6 +74,10 @@ class _PairingSheetState extends State<PairingSheet> {
             children: [
               const _Header(),
               const SizedBox(height: GimmySpacing.md),
+              // Before the scan, not after it: a watch that is not
+              // broadcasting will never appear, however long you wait.
+              const _BroadcastNote(),
+              const SizedBox(height: GimmySpacing.md),
               _ScanCard(state: state),
               if (pairedId != null) ...[
                 const SizedBox(height: GimmySpacing.md),
@@ -92,8 +97,6 @@ class _PairingSheetState extends State<PairingSheet> {
                   const SizedBox(height: GimmySpacing.sm),
                 ],
               const SizedBox(height: GimmySpacing.sm),
-              const _BroadcastNote(),
-              const SizedBox(height: GimmySpacing.md),
               GimmyCta(
                 label: 'Done',
                 icon: Icons.check,

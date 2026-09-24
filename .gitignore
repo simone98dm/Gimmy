@@ -67,3 +67,6 @@ app.*.map.json
 
 # Backup copies left behind by doc-rewriting tooling
 *.original.md
+
+# Golden images rendered by tests
+test/**/*.png

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../data/models/plan.dart';
-import '../../data/models/plan_step.dart';
 import '../config/feature_flags.dart';
 import '../theme/gimmy_tokens.dart';
 import '../theme/tokens.dart';
@@ -12,8 +11,7 @@ import 'gimmy_cta.dart';
 ///
 /// Laid out as the prototype's dashboard hero — a category chip and duration
 /// on top, the plan name large, the exercises it contains underneath, two
-/// telemetry pills, then a full-width CTA. Shared with the Active page so the
-/// plan reads the same wherever you meet it.
+/// telemetry pills, then a full-width CTA.
 class StartWorkoutBanner extends StatelessWidget {
   const StartWorkoutBanner({super.key, required this.plan, this.onStart});
 
@@ -81,7 +79,7 @@ class StartWorkoutBanner extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _TelemetryPill(
+                child: TelemetryPill(
                   icon: Icons.fitness_center,
                   iconColor: theme.colorScheme.primary,
                   label: 'Exercises',
@@ -90,7 +88,7 @@ class StartWorkoutBanner extends StatelessWidget {
               ),
               const SizedBox(width: GimmySpacing.xs),
               Expanded(
-                child: _TelemetryPill(
+                child: TelemetryPill(
                   icon: Icons.format_list_numbered,
                   iconColor: tokens.intensityRest,
                   label: 'Total steps',
@@ -110,22 +108,12 @@ class StartWorkoutBanner extends StatelessWidget {
     );
   }
 
-  /// The distinct working exercises, in the order they first appear.
-  static List<String> _exercises(Plan plan) {
-    final seen = <String>{};
-    return [
-      for (final step in plan.steps)
-        if (step.intensity == StepIntensity.active && seen.add(step.name))
-          step.name,
-    ];
-  }
-
-  static int _exerciseCount(Plan plan) => _exercises(plan).length;
+  static int _exerciseCount(Plan plan) => plan.exerciseNames.length;
 
   /// "Squat • Row left • Row right …", clipped to one line by the
   /// caller. Falls back to the warmup and cooldown when a plan is all rest.
   static String _exerciseSummary(Plan plan) {
-    final names = _exercises(plan);
+    final names = plan.exerciseNames;
     if (names.isEmpty) {
       return plan.steps.map((s) => s.name).toSet().take(4).join(' • ');
     }
@@ -163,8 +151,10 @@ class _PlanChip extends StatelessWidget {
   }
 }
 
-class _TelemetryPill extends StatelessWidget {
-  const _TelemetryPill({
+/// An icon and a labelled mono value on a recessed pill.
+class TelemetryPill extends StatelessWidget {
+  const TelemetryPill({
+    super.key,
     required this.icon,
     required this.iconColor,
     required this.label,

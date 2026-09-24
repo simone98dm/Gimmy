@@ -35,6 +35,7 @@ class ExecutionState extends Equatable {
     this.stepsCompleted = 0,
     this.stepsSkipped = 0,
     this.status = ExecutionStatus.running,
+    this.canUndoSkip = false,
   });
 
   final Plan plan;
@@ -59,6 +60,9 @@ class ExecutionState extends Equatable {
   final int stepsCompleted;
   final int stepsSkipped;
   final ExecutionStatus status;
+
+  /// True straight after a skip, until anything else moves the workout on.
+  final bool canUndoSkip;
 
   bool get isRunning => status == ExecutionStatus.running;
   bool get isFinished => !isRunning;
@@ -101,6 +105,7 @@ class ExecutionState extends Equatable {
     int? stepsCompleted,
     int? stepsSkipped,
     ExecutionStatus? status,
+    bool? canUndoSkip,
   }) {
     return ExecutionState(
       plan: plan,
@@ -113,6 +118,7 @@ class ExecutionState extends Equatable {
       stepsCompleted: stepsCompleted ?? this.stepsCompleted,
       stepsSkipped: stepsSkipped ?? this.stepsSkipped,
       status: status ?? this.status,
+      canUndoSkip: canUndoSkip ?? this.canUndoSkip,
     );
   }
 
@@ -128,5 +134,6 @@ class ExecutionState extends Equatable {
     stepsCompleted,
     stepsSkipped,
     status,
+    canUndoSkip,
   ];
 }

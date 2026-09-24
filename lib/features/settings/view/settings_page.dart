@@ -3,18 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/bloc/app_bloc.dart';
-import '../../../core/theme/gimmy_tokens.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/config/feature_flags.dart';
+import '../../../core/widgets/desktop_layout.dart';
 import '../../about/view/about_page.dart';
 import '../../about/view/legal_page.dart';
 import '../../heart_rate/bloc/heart_rate_bloc.dart';
 import '../../heart_rate/view/pairing_sheet.dart';
+import '../widgets/settings_desktop.dart';
 import '../widgets/settings_row.dart';
 import '../widgets/settings_section.dart';
 import '../widgets/theme_mode_selector.dart';
 import '../widgets/wipe_confirmation_dialog.dart';
 
-/// Theme, plan import, the phase-2/3 placeholders, and wiping the profile.
+/// Theme, plan import, sensor and cues, the data kept, and About.
+///
+/// On a desktop the four sections form a 2×2 grid, as in the Stitch desktop
+/// settings screen.
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
     super.key,
@@ -37,6 +42,118 @@ class SettingsPage extends StatelessWidget {
     );
     final plan = context.select((AppBloc bloc) => bloc.state.plan);
 
+    final isDesktop = isDesktopLayout(context);
+    final sessionCount = context.select(
+      (AppBloc bloc) => bloc.state.sessions.length,
+    );
+    void openAbout() => Navigator.of(context).push(AboutPage.route());
+    void openLegal() => Navigator.of(context).push(LegalPage.route());
+
+    final appearance = SettingsSection(
+      label: 'Appearance',
+      icon: Icons.display_settings,
+      caption: 'Theme',
+      children: [
+        SettingsRow(
+          icon: Icons.dark_mode_outlined,
+          title: 'Display interface',
+          subtitle: 'Applies the moment you choose',
+          below: ThemeModeSelector(
+            value: themeMode,
+            onChanged: (mode) =>
+                context.read<AppBloc>().add(AppThemeModeChanged(mode)),
+          ),
+        ),
+      ],
+    );
+    final workout = SettingsSection(
+      label: 'Workout & hardware',
+      icon: Icons.watch_outlined,
+      caption: 'Plans, sensors & cues',
+      children: [
+        SettingsRow(
+          icon: Icons.file_open_outlined,
+          title: 'Import new .fit plan',
+          subtitle: plan == null
+              ? 'No plan imported yet'
+              : '${plan.name} · ${plan.stepCount} steps',
+          onTap: onImport,
+        ),
+        // Web Bluetooth is Chrome-only and cannot reconnect without a
+        // tap, so pairing is a mobile feature.
+        if (!kIsWeb) const _HeartRateRow(),
+        const _CuesRow(),
+      ],
+    );
+    final data = SettingsSection(
+      label: 'Data & privacy',
+      icon: Icons.shield_outlined,
+      // On a desktop the sidebar already says this on every page.
+      caption: isDesktop
+          ? 'What this device keeps'
+          : 'Stored on this device only · no account, no upload',
+      children: [
+        if (isDesktop)
+          LocalStorageCard(sessionCount: sessionCount, hasPlan: plan != null),
+        // One quiet row: the confirmation dialog is the safeguard, so the
+        // destructive action need not be the loudest thing on the page.
+        SettingsRow(
+          icon: Icons.delete_forever_outlined,
+          title: 'Wipe profile',
+          subtitle: 'Delete every plan, session and setting',
+          isDestructive: true,
+          onTap: () async {
+            final appBloc = context.read<AppBloc>();
+            if (!await confirmWipe(context)) return;
+
+            appBloc.add(const AppWipeRequested());
+            onWiped();
+          },
+        ),
+      ],
+    );
+    final about = SettingsSection(
+      label: 'About',
+      icon: Icons.info_outline,
+      caption: 'Version ${AppConfig.appVersion} · legal',
+      children: [
+        SettingsRow(
+          icon: Icons.info_outline,
+          title: 'About Gimmy',
+          subtitle: 'Version, how it is built, credits',
+          onTap: openAbout,
+        ),
+        SettingsRow(
+          icon: Icons.gavel,
+          title: 'Legal notes & terms',
+          subtitle: 'Disclaimer, your data, trademarks',
+          onTap: openLegal,
+        ),
+      ],
+    );
+
+    if (isDesktop) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: GimmySpacing.gutter),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: GimmySpacing.md),
+            const SettingsDesktopHeader(),
+            const SizedBox(height: GimmySpacing.lg),
+            DesktopColumns(
+              isEqualHeight: true,
+              start: appearance,
+              end: workout,
+            ),
+            const SizedBox(height: GimmySpacing.lg),
+            DesktopColumns(isEqualHeight: true, start: data, end: about),
+            const SizedBox(height: GimmySpacing.lg),
+          ],
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: GimmySpacing.gutter),
       child: Column(
@@ -46,83 +163,11 @@ class SettingsPage extends StatelessWidget {
           const _PageTitle(),
           const SizedBox(height: GimmySpacing.md),
 
-          SettingsSection(
-            label: 'Appearance',
-            children: [
-              SettingsRow(
-                icon: Icons.dark_mode_outlined,
-                title: 'Display interface',
-                subtitle: 'Applies the moment you choose',
-                below: ThemeModeSelector(
-                  value: themeMode,
-                  onChanged: (mode) =>
-                      context.read<AppBloc>().add(AppThemeModeChanged(mode)),
-                ),
-              ),
-              const SettingsRow(
-                icon: Icons.palette_outlined,
-                title: 'Accent colour',
-                subtitle: 'Recolour the app to match your kit',
-                isComingSoon: true,
-              ),
-            ],
-          ),
-          const SizedBox(height: GimmySpacing.md),
-
-          SettingsSection(
-            label: 'Workout & hardware',
-            children: [
-              SettingsRow(
-                icon: Icons.file_open_outlined,
-                title: 'Import new .fit plan',
-                subtitle: plan == null
-                    ? 'No plan imported yet'
-                    : '${plan.name} · ${plan.stepCount} steps',
-                onTap: onImport,
-              ),
-              // Web Bluetooth is Chrome-only and cannot reconnect without a
-              // tap, so pairing is a mobile feature.
-              if (!kIsWeb) const _HeartRateRow(),
-              const _CuesRow(),
-            ],
-          ),
-          const SizedBox(height: GimmySpacing.md),
-
-          SettingsSection(
-            label: 'Data & privacy',
-            children: [
-              SettingsRow(
-                icon: Icons.delete_forever_outlined,
-                title: 'Wipe profile',
-                subtitle: 'Delete every plan, session and setting',
-                isDestructive: true,
-                below: _WipeButton(onWiped: onWiped),
-              ),
-            ],
-          ),
-          const SizedBox(height: GimmySpacing.md),
-
-          SettingsSection(
-            label: 'About',
-            children: [
-              SettingsRow(
-                icon: Icons.info_outline,
-                title: 'About Gimmy',
-                subtitle: 'Version, how it is built, credits',
-                onTap: () => Navigator.of(context).push(AboutPage.route()),
-              ),
-              SettingsRow(
-                icon: Icons.gavel,
-                title: 'Legal notes & terms',
-                subtitle: 'Disclaimer, your data, trademarks',
-                onTap: () => Navigator.of(context).push(LegalPage.route()),
-              ),
-            ],
-          ),
-          const SizedBox(height: GimmySpacing.md),
-
-          const _Footer(),
-          const SizedBox(height: GimmySpacing.lg),
+          for (final section in [appearance, workout, data, about]) ...[
+            section,
+            const SizedBox(height: GimmySpacing.md),
+          ],
+          const SizedBox(height: GimmySpacing.sm),
         ],
       ),
     );
@@ -166,14 +211,15 @@ class _HeartRateRow extends StatelessWidget {
     final bpm = context.select((HeartRateBloc bloc) => bloc.state.bpm);
 
     final subtitle = switch (link) {
-      HeartRateLink.none => 'Pair a Garmin watch or HRM strap for live BPM',
+      HeartRateLink.none => 'Pair a watch or chest strap for live BPM',
       HeartRateLink.connecting => '${name ?? 'Sensor'} · waiting for device',
       HeartRateLink.live => '${name ?? 'Sensor'} · $bpm bpm',
     };
 
     return SettingsRow(
       icon: Icons.watch_outlined,
-      title: 'Garmin heart rate',
+      // Any standard BLE heart-rate sensor works, not only Garmin's.
+      title: 'Heart-rate sensor',
       subtitle: subtitle,
       onTap: () => showPairingSheet(context),
     );
@@ -185,110 +231,6 @@ class _PageTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final tokens = GimmyTokens.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Settings', style: theme.textTheme.headlineLarge),
-        Text(
-          'APP & DATA CONFIG',
-          style: tokens.labelMono.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            letterSpacing: 1.6,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _WipeButton extends StatelessWidget {
-  const _WipeButton({required this.onWiped});
-
-  final VoidCallback onWiped;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return SizedBox(
-      height: 44,
-      child: OutlinedButton.icon(
-        onPressed: () async {
-          final appBloc = context.read<AppBloc>();
-          if (!await confirmWipe(context)) return;
-
-          appBloc.add(const AppWipeRequested());
-          onWiped();
-        },
-        icon: const Icon(Icons.warning_amber_rounded, size: 18),
-        label: const Text('Wipe everything'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: theme.colorScheme.error,
-          backgroundColor: theme.colorScheme.errorContainer.withValues(
-            alpha: 0.2,
-          ),
-          side: BorderSide(
-            color: theme.colorScheme.error.withValues(alpha: 0.4),
-          ),
-          minimumSize: const Size.fromHeight(44),
-        ),
-      ),
-    );
-  }
-}
-
-/// The prototype's version strip, saying the thing that actually matters here.
-class _Footer extends StatelessWidget {
-  const _Footer();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final tokens = GimmyTokens.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(GimmySpacing.md),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLowest,
-        borderRadius: GimmyRadii.card,
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: GimmySpacing.sm),
-              Text(
-                'GIMMY',
-                style: tokens.labelMono.copyWith(
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.6,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: GimmySpacing.xs),
-          Text(
-            'Everything stays on this device. No account, no upload.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
+    return Text('Settings', style: Theme.of(context).textTheme.headlineLarge);
   }
 }

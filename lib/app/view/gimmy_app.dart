@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../core/logging/log_observers.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/desktop_layout.dart';
 import '../../data/heart_rate/ble_heart_rate_monitor.dart';
 import '../../data/heart_rate/heart_rate_monitor.dart';
 import '../../data/storage/plan_repository.dart';
@@ -58,6 +60,10 @@ class GimmyApp extends StatelessWidget {
   }
 }
 
+/// One for the app's lifetime: a theme change rebuilds the MaterialApp, and a
+/// fresh observer each time would be re-attached to the same navigator.
+final _navigationLog = LoggingNavigatorObserver();
+
 class _ThemedApp extends StatelessWidget {
   const _ThemedApp();
 
@@ -75,6 +81,7 @@ class _ThemedApp extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
+      navigatorObservers: [_navigationLog],
       builder: (context, child) => _PhoneFrame(child: child),
       home: const HomeShell(),
     );
@@ -87,6 +94,9 @@ class _ThemedApp extends StatelessWidget {
 /// stretch across a desktop browser gives you 1200px-wide buttons and line
 /// lengths nobody can read, so it is centred in a phone-sized column instead
 /// and the surplus becomes background.
+///
+/// A desktop-width browser is the exception: there the scaffold switches to
+/// its sidebar layout, which is built for the width.
 class _PhoneFrame extends StatelessWidget {
   const _PhoneFrame({required this.child});
 
@@ -99,7 +109,10 @@ class _PhoneFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = child ?? const SizedBox.shrink();
-    if (MediaQuery.sizeOf(context).width <= _maxWidth) return content;
+    if (MediaQuery.sizeOf(context).width <= _maxWidth ||
+        isDesktopLayout(context)) {
+      return content;
+    }
 
     final theme = Theme.of(context);
 

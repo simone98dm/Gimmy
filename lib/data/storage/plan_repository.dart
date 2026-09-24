@@ -1,8 +1,7 @@
-import 'package:flutter/foundation.dart';
-
 import '../models/plan.dart';
 import 'document_store.dart';
 import 'open_document_store.dart';
+import '../../core/logging/app_log.dart';
 
 /// Stores the one active plan.
 ///
@@ -24,7 +23,7 @@ class PlanRepository {
     } on Object catch (error) {
       // Written by an older or newer build, or hand-edited. Better to start
       // from the import screen than to crash on launch.
-      debugPrint('gimmy: stored plan could not be read, discarding it: $error');
+      AppLog.warning('storage', 'stored plan unreadable, discarding it', error);
       await _store.delete();
       return null;
     }

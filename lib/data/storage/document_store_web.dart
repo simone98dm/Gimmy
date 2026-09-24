@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'document_store.dart';
+import '../../core/logging/app_log.dart';
 
 /// Opens [name] as a key in the browser's local storage.
 DocumentStore openDocumentStore(String name) =>
@@ -36,7 +36,7 @@ class PreferencesDocumentStore implements DocumentStore {
     try {
       return jsonDecode(raw);
     } on FormatException catch (error) {
-      debugPrint('gimmy: $key holds invalid JSON, ignoring it: $error');
+      AppLog.warning('storage', '$key holds invalid JSON, ignoring it', error);
       return null;
     }
   }

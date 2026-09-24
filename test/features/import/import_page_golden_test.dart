@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gimmy/core/theme/app_theme.dart';
+import 'package:gimmy/core/widgets/app_sidebar.dart';
+import 'package:gimmy/core/widgets/desktop_layout.dart';
 import 'package:gimmy/core/widgets/gimmy_scaffold.dart';
 import 'package:gimmy/data/fit/fit_file_picker.dart';
 import 'package:gimmy/data/fit/fit_workout_parser.dart';
@@ -34,7 +36,8 @@ Widget harness({required Brightness brightness, required ImportBloc bloc}) {
     debugShowCheckedModeBanner: false,
     theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
     home: GimmyScaffold(
-      label: 'Plan Import',
+      label: 'Import plan',
+      sidebarItem: SidebarItem.import,
       child: BlocProvider.value(value: bloc, child: const ImportPage()),
     ),
   );
@@ -69,9 +72,17 @@ void main() {
     required Brightness brightness,
     required String name,
     ImportEvent? event,
+    bool desktop = false,
   }) async {
-    tester.view.physicalSize = const Size(1179, 2556); // iPhone 17
-    tester.view.devicePixelRatio = 3;
+    if (desktop) {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      debugDesktopLayoutEnabled = true;
+      addTearDown(() => debugDesktopLayoutEnabled = false);
+    } else {
+      tester.view.physicalSize = const Size(1179, 2556); // iPhone 17
+      tester.view.devicePixelRatio = 3;
+    }
     addTearDown(tester.view.reset);
 
     final bloc = await blocWith(
@@ -125,6 +136,16 @@ void main() {
       brightness: Brightness.light,
       name: 'import_preview_light',
       event: const ImportFileRequested(),
+    );
+  });
+
+  testWidgets('desktop: picker beside the parsed steps', (tester) async {
+    await renderAndCapture(
+      tester,
+      brightness: Brightness.dark,
+      name: 'import_preview_desktop_dark',
+      event: const ImportFileRequested(),
+      desktop: true,
     );
   });
 }

@@ -12,14 +12,22 @@ import 'gimmy_logo.dart';
 /// Identical on all four Stitch screens apart from [label], which names the
 /// current page in mono caps next to the avatar.
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {
-  const AppHeader({super.key, required this.label, this.leading});
+  const AppHeader({
+    super.key,
+    required this.label,
+    this.leading,
+    this.showBrand = true,
+  });
 
-  /// Page name, rendered uppercase. e.g. "Dashboard", "Active Workout".
+  /// Page name, rendered uppercase. e.g. "Today", "Workout".
   final String label;
 
   /// Replaces the logo on pushed routes, where a way back matters more than
   /// the branding.
   final Widget? leading;
+
+  /// False beside the desktop sidebar, which already shows the brand.
+  final bool showBrand;
 
   @override
   Size get preferredSize => const Size.fromHeight(GimmyLayout.headerHeight);
@@ -52,7 +60,12 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Flexible(child: leading ?? const _Brand()),
+                Flexible(
+                  child:
+                      leading ??
+                      // Beside the desktop sidebar, which carries the brand.
+                      (showBrand ? const _Brand() : const SizedBox.shrink()),
+                ),
                 const SizedBox(width: GimmySpacing.sm),
                 _PageBadge(label: label),
               ],
@@ -111,7 +124,7 @@ class _Brand extends StatelessWidget {
   }
 }
 
-/// The page name and the avatar, on the right.
+/// The page name, on the right.
 ///
 /// Sized to its content, so when something has to give it is the wordmark on
 /// the left that shortens, never the page you are looking at.
@@ -125,31 +138,13 @@ class _PageBadge extends StatelessWidget {
     final theme = Theme.of(context);
     final tokens = GimmyTokens.of(context);
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: tokens.labelMono.copyWith(
-            color: theme.colorScheme.primary,
-            letterSpacing: 1,
-          ),
-        ),
-        const SizedBox(width: GimmySpacing.sm),
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.person,
-            size: 18,
-            color: theme.colorScheme.onPrimary,
-          ),
-        ),
-      ],
+    // No avatar: there is no account, and a person icon suggests one.
+    return Text(
+      label.toUpperCase(),
+      style: tokens.labelMono.copyWith(
+        color: theme.colorScheme.primary,
+        letterSpacing: 1,
+      ),
     );
   }
 }

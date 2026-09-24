@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../data/heart_rate/heart_rate_monitor.dart';
+import '../../../core/logging/app_log.dart';
 
 part 'heart_rate_event.dart';
 part 'heart_rate_state.dart';
@@ -57,7 +57,7 @@ class HeartRateBloc extends Bloc<HeartRateEvent, HeartRateState> {
         .listen(
           (bpm) => add(_HeartRateReceived(bpm)),
           onError: (Object error) =>
-              debugPrint('gimmy: heart-rate stream failed: $error'),
+              AppLog.error('heart-rate', 'reading stream failed', error),
         );
   }
 
@@ -84,6 +84,7 @@ class HeartRateBloc extends Bloc<HeartRateEvent, HeartRateState> {
     try {
       await _monitor.startScan();
     } on Object catch (error) {
+      AppLog.warning('heart-rate', 'scan could not start', error);
       emit(state.copyWith(isScanning: false, scanError: () => _reason(error)));
     }
   }

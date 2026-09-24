@@ -3,10 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../bloc/app_bloc.dart';
+import '../../core/widgets/app_sidebar.dart';
 import '../../core/widgets/gimmy_page_route.dart';
 import '../../core/widgets/gimmy_scaffold.dart';
 import '../../data/models/plan.dart';
 import '../../data/storage/session_repository.dart';
+import 'sidebar_stats.dart';
 import '../../features/execution/bloc/execution_bloc.dart';
 import '../../features/execution/bloc/ticker.dart';
 import '../../features/execution/view/execution_page.dart';
@@ -29,6 +31,7 @@ class ExecutionRoute extends StatelessWidget {
     required Plan plan,
     Ticker ticker = const Ticker(),
   }) => GimmyPageRoute<void>(
+    settings: const RouteSettings(name: 'workout'),
     builder: (_) => ExecutionRoute(plan: plan, ticker: ticker),
   );
 
@@ -71,6 +74,7 @@ class _ExecutionHostState extends State<_ExecutionHost> {
   /// Asks before throwing away a workout in progress.
   Future<bool> _confirmAbandon() async {
     final confirmed = await showDialog<bool>(
+      routeSettings: const RouteSettings(name: 'leave-workout dialog'),
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Leave this workout?'),
@@ -118,6 +122,10 @@ class _ExecutionHostState extends State<_ExecutionHost> {
       },
       child: GimmyScaffold(
         label: 'Workout',
+        // Inert: the way out of a workout is the back button and its
+        // confirmation, not a sidebar click.
+        sidebarItem: SidebarItem.active,
+        sidebarFooter: const SidebarStats(),
         leading: BackButton(onPressed: () => Navigator.of(context).maybePop()),
         child: ExecutionPage(
           areCuesEnabled: context.select(

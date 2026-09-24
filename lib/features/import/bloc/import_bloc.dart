@@ -7,6 +7,7 @@ import '../../../data/fit/fit_workout_parser.dart';
 import '../../../data/models/plan.dart';
 import '../../../data/storage/plan_repository.dart';
 import '../../../data/storage/settings_repository.dart';
+import '../../../core/logging/app_log.dart';
 
 part 'import_event.dart';
 part 'import_state.dart';
@@ -45,22 +46,24 @@ class ImportBloc extends Bloc<ImportEvent, ImportState> {
     final PickedFitFile? picked;
     try {
       picked = await _pickFile();
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       emit(
         ImportState(
           status: ImportStatus.failure,
           errorMessage: FitParseFailure.unreadable.message,
         ),
       );
-      addError(error);
+      addError(error, stackTrace);
       return;
     }
 
     // Cancelling is not a failure; go back to where we were.
     if (picked == null) {
+      AppLog.info('import', 'picker cancelled');
       emit(const ImportState());
       return;
     }
+    AppLog.info('import', 'picked ${picked.name} (${picked.bytes.length} B)');
 
     try {
       final plan = FitWorkoutParser.parse(
@@ -69,6 +72,7 @@ class ImportBloc extends Bloc<ImportEvent, ImportState> {
         planId: _newPlanId(),
         importedAt: _now(),
       );
+      AppLog.info('import', 'parsed "${plan.name}": ${plan.stepCount} steps');
       emit(
         ImportState(
           status: ImportStatus.preview,
@@ -77,6 +81,8 @@ class ImportBloc extends Bloc<ImportEvent, ImportState> {
         ),
       );
     } on FitParseException catch (error) {
+      // Expected for the wrong kind of file: the user sees why, so a warning.
+      AppLog.warning('import', 'rejected ${picked.name}', error.message);
       emit(
         ImportState(
           status: ImportStatus.failure,
@@ -84,7 +90,7 @@ class ImportBloc extends Bloc<ImportEvent, ImportState> {
           errorMessage: error.message,
         ),
       );
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       // The parser is defensive, but a malformed file finding a new path
       // through it must still not take the app down.
       emit(
@@ -94,7 +100,7 @@ class ImportBloc extends Bloc<ImportEvent, ImportState> {
           errorMessage: FitParseFailure.corrupt.message,
         ),
       );
-      addError(error);
+      addError(error, stackTrace);
     }
   }
 
@@ -119,6 +125,7 @@ class ImportBloc extends Bloc<ImportEvent, ImportState> {
       final settings = await _settingsRepository.load();
       await _settingsRepository.save(settings.copyWith(activePlanId: plan.id));
 
+      AppLog.info('import', 'saved "${plan.name}" as the active plan');
       emit(
         ImportState(
           status: ImportStatus.saved,
@@ -126,7 +133,7 @@ class ImportBloc extends Bloc<ImportEvent, ImportState> {
           filename: state.filename,
         ),
       );
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       // Leave storage as it was and let the user try again.
       await _planRepository.clear();
       emit(
@@ -136,7 +143,7 @@ class ImportBloc extends Bloc<ImportEvent, ImportState> {
           errorMessage: 'The plan could not be saved. Try importing it again.',
         ),
       );
-      addError(error);
+      addError(error, stackTrace);
     }
   }
 

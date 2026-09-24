@@ -142,7 +142,11 @@ class _SessionCalendarState extends State<SessionCalendar> {
   }
 }
 
-/// The strip under the grid: what the month adds up to.
+/// The line under the grid: what the month adds up to, as one sentence.
+///
+/// Workouts and days are different counts — two sessions can share a day — so
+/// the days are only mentioned when they differ, rather than sitting beside
+/// the workouts as a second number that looks like the same fact.
 class _MonthSummary extends StatelessWidget {
   const _MonthSummary({required this.activeDays, required this.sessions});
 
@@ -152,81 +156,32 @@ class _MonthSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tokens = GimmyTokens.of(context);
+    final workouts = sessions == 1 ? '1 workout' : '$sessions workouts';
+    final days = activeDays == 1 ? '1 day' : '$activeDays days';
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(GimmySpacing.sm + 4),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,
         borderRadius: GimmyRadii.card,
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Flexible(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: GimmySpacing.sm),
-                Flexible(
-                  child: Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: sessions == 1
-                              ? '1 workout '
-                              : '$sessions workouts ',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        TextSpan(
-                          text: 'this month',
-                          style: TextStyle(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ),
-              ],
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: workouts,
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-          ),
-          const SizedBox(width: GimmySpacing.xs),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: GimmySpacing.sm,
-              vertical: 2,
+            TextSpan(
+              text: sessions == activeDays
+                  ? ' this month'
+                  : ' on $days this month',
+              style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
             ),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: GimmyRadii.cell,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  activeDays == 1 ? '1 ACTIVE DAY' : '$activeDays ACTIVE DAYS',
-                  style: tokens.labelMono.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(width: GimmySpacing.xs),
-                Icon(Icons.bolt, size: 14, color: theme.colorScheme.primary),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
+        style: theme.textTheme.bodySmall,
       ),
     );
   }
@@ -255,7 +210,6 @@ class _MonthButton extends StatelessWidget {
         minWidth: GimmyLayout.minTapTarget,
         minHeight: GimmyLayout.minTapTarget,
       ),
-      visualDensity: VisualDensity.compact,
       style: IconButton.styleFrom(
         backgroundColor: theme.colorScheme.surfaceContainerHighest,
         foregroundColor: theme.colorScheme.onSurface,
@@ -347,9 +301,12 @@ class _MonthGrid extends StatelessWidget {
     final day = DateTime(month.year, month.month, dayNumber + 1);
     final sessions = byDay[day] ?? const <WorkoutSession>[];
 
+    final todayDate = DateTime(today.year, today.month, today.day);
+
     return _DayCell(
       day: day,
-      isToday: day == DateTime(today.year, today.month, today.day),
+      isToday: day == todayDate,
+      isFuture: day.isAfter(todayDate),
       sessions: sessions,
       onTap: sessions.isEmpty ? null : () => onDaySelected(day, sessions),
     );
@@ -360,12 +317,21 @@ class _DayCell extends StatelessWidget {
   const _DayCell({
     required this.day,
     required this.isToday,
+    required this.isFuture,
     required this.sessions,
     required this.onTap,
   });
 
+  /// Tall enough to be a comfortable tap target, not just a dot.
+  static const double _cellHeight = GimmyLayout.minTapTarget;
+  static const double _dotSize = 34;
+  static const double _dayFontSize = 13;
+
   final DateTime day;
   final bool isToday;
+
+  /// Not yet happened, so neither missed nor done: drawn bare.
+  final bool isFuture;
   final List<WorkoutSession> sessions;
   final VoidCallback? onTap;
 
@@ -375,25 +341,26 @@ class _DayCell extends StatelessWidget {
     final tokens = GimmyTokens.of(context);
     final hasSessions = sessions.isNotEmpty;
 
-    // Today outranks everything: it is the one cell you look for.
-    final (background, foreground) = switch ((isToday, hasSessions)) {
-      (true, _) => (theme.colorScheme.primary, theme.colorScheme.onPrimary),
-      (false, true) => (
+    // The fill says what happened; today is a ring on top of that, so it never
+    // gets mistaken for a session day.
+    final (background, foreground) = switch ((hasSessions, isFuture)) {
+      (true, _) => (
         theme.colorScheme.primaryContainer,
         theme.colorScheme.onPrimaryContainer,
       ),
+      (false, true) => (Colors.transparent, theme.colorScheme.onSurfaceVariant),
       (false, false) => (
         theme.colorScheme.surfaceContainerHighest,
         theme.colorScheme.onSurfaceVariant,
       ),
     };
+    final workouts = hasSessions
+        ? '${sessions.length} workout${sessions.length == 1 ? '' : 's'}'
+        : 'no workout';
 
     return Semantics(
       button: hasSessions,
-      label: hasSessions
-          ? '${day.day}, ${sessions.length} workout'
-                '${sessions.length == 1 ? '' : 's'}'
-          : '${day.day}, no workout',
+      label: '${isToday ? 'Today, ' : ''}${day.day}, $workouts',
       excludeSemantics: true,
       child: Material(
         color: Colors.transparent,
@@ -401,19 +368,23 @@ class _DayCell extends StatelessWidget {
           onTap: onTap,
           customBorder: const CircleBorder(),
           child: SizedBox(
-            height: 36,
+            height: _cellHeight,
             child: Center(
               child: Container(
-                width: 28,
-                height: 28,
+                width: _dotSize,
+                height: _dotSize,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: background,
                   shape: BoxShape.circle,
+                  border: isToday
+                      ? Border.all(color: theme.colorScheme.primary, width: 2)
+                      : null,
                 ),
                 child: Text(
                   '${day.day}',
                   style: tokens.labelMono.copyWith(
+                    fontSize: _dayFontSize,
                     color: foreground,
                     fontWeight: hasSessions || isToday
                         ? FontWeight.w700
@@ -444,11 +415,12 @@ class _AdjacentDayCell extends StatelessWidget {
     final tokens = GimmyTokens.of(context);
 
     return SizedBox(
-      height: 36,
+      height: _DayCell._cellHeight,
       child: Center(
         child: Text(
           '$day',
           style: tokens.labelMono.copyWith(
+            fontSize: _DayCell._dayFontSize,
             color: theme.colorScheme.outline.withValues(alpha: 0.4),
           ),
         ),

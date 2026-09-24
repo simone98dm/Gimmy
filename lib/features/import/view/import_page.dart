@@ -5,6 +5,7 @@ import '../../../core/config/feature_flags.dart';
 import '../../../core/theme/gimmy_tokens.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/util/duration_format.dart';
+import '../../../core/widgets/desktop_layout.dart';
 import '../../../core/widgets/gimmy_card.dart';
 import '../../../core/widgets/gimmy_cta.dart';
 import '../../../core/widgets/section_heading.dart';
@@ -12,6 +13,7 @@ import '../../../core/widgets/stat_tile.dart';
 import '../../../data/models/plan.dart';
 import '../../../core/widgets/plan_step_list.dart';
 import '../bloc/import_bloc.dart';
+import '../widgets/import_desktop.dart';
 
 /// Picks a Garmin `.fit` workout file, shows what is in it, and saves it as the
 /// active plan once the user confirms.
@@ -42,9 +44,13 @@ class _ImportView extends StatelessWidget {
   Widget build(BuildContext context) {
     final plan = state.plan;
 
+    if (isDesktopLayout(context)) return _desktopView(context, plan);
+
     return Column(
       children: [
-        Expanded(child: _scrollView(plan)),
+        Expanded(
+          child: CustomScrollView(slivers: [..._intro(plan), ..._steps(plan)]),
+        ),
         // Pinned rather than trailing the step list: with the sample plan that
         // list is 54 rows long, and the action that ends the flow should not be
         // buried under all of it.
@@ -53,49 +59,154 @@ class _ImportView extends StatelessWidget {
     );
   }
 
-  Widget _scrollView(Plan? plan) {
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: GimmySpacing.gutter),
-          sliver: SliverList.list(
-            children: [
-              const SizedBox(height: GimmySpacing.md),
-              const SectionHeading(
-                eyebrow: 'Workout ingestion',
-                title: 'Import Workout',
-                subtitle: 'Load a Garmin-compatible .fit workout file.',
-              ),
-              const SizedBox(height: GimmySpacing.lg),
-              _DropZone(isBusy: state.isBusy),
-              if (state.status == ImportStatus.failure) ...[
-                const SizedBox(height: GimmySpacing.md),
-                _ImportError(
-                  message: state.errorMessage!,
-                  filename: state.filename,
+  /// The Stitch desktop layout: a full-width title, then the picker, the
+  /// parsed file and its intensity mix on the left and the steps on the
+  /// right, each scrolling on its own, over a confirm bar.
+  Widget _desktopView(BuildContext context, Plan? plan) {
+    final bloc = context.read<ImportBloc>();
+
+    return Column(
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(
+            GimmySpacing.gutter,
+            GimmySpacing.md,
+            GimmySpacing.gutter,
+            GimmySpacing.lg,
+          ),
+          child: ImportDesktopHeader(),
+        ),
+        Expanded(
+          child: DesktopColumns(
+            startFlex: 5,
+            endFlex: 7,
+            start: ListView(
+              padding: _padding,
+              children: [
+                if (plan == null) ...[
+                  _DropZone(isBusy: state.isBusy),
+                  const SizedBox(height: GimmySpacing.sm),
+                  const _FileHelp(),
+                ],
+                if (state.status == ImportStatus.failure) ...[
+                  const SizedBox(height: GimmySpacing.md),
+                  _ImportError(
+                    message: state.errorMessage!,
+                    filename: state.filename,
+                  ),
+                ],
+                if (plan != null) ...[
+                  ParsedFileCard(
+                    plan: plan,
+                    filename: state.filename,
+                    onChangeFile: state.isBusy
+                        ? null
+                        : () => bloc.add(const ImportFileRequested()),
+                  ),
+                  const SizedBox(height: GimmySpacing.lg),
+                  IntensityMixCard(plan: plan),
+                ],
+                const SizedBox(height: GimmySpacing.lg),
+              ],
+            ),
+            end: CustomScrollView(
+              slivers: [
+                if (plan == null)
+                  const SliverPadding(
+                    padding: _padding,
+                    sliver: SliverToBoxAdapter(child: EmptyStepsCard()),
+                  )
+                else ...[
+                  SliverPadding(
+                    padding: _padding,
+                    sliver: SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: GimmySpacing.md),
+                        child: ParsedPlanHeader(plan: plan),
+                      ),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: _padding,
+                    sliver: SliverPlanStepList(plan: plan),
+                  ),
+                ],
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: GimmySpacing.lg),
                 ),
               ],
-              if (plan != null) ...[
-                const SizedBox(height: GimmySpacing.xl),
-                _PlanSummary(plan: plan, filename: state.filename),
-                const SizedBox(height: GimmySpacing.lg),
-                _StepsLabel(),
-                const SizedBox(height: GimmySpacing.sm),
-              ],
-            ],
+            ),
           ),
         ),
         if (plan != null)
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: GimmySpacing.gutter,
-            ),
-            sliver: SliverPlanStepList(plan: plan),
+          ImportDesktopConfirmBar(
+            plan: plan,
+            isSaving: state.status == ImportStatus.saving,
+            onDiscard: () => bloc.add(const ImportReset()),
+            onConfirm: state.canConfirm
+                ? () => bloc.add(const ImportConfirmed())
+                : null,
           ),
-        const SliverToBoxAdapter(child: SizedBox(height: GimmySpacing.lg)),
       ],
     );
   }
+
+  static const _padding = EdgeInsets.symmetric(horizontal: GimmySpacing.gutter);
+
+  List<Widget> _intro(Plan? plan) => [
+    SliverPadding(
+      padding: _padding,
+      sliver: SliverList.list(
+        children: [
+          const SizedBox(height: GimmySpacing.md),
+          const SectionHeading(
+            title: 'Import a workout',
+            subtitle: 'Load a Garmin-compatible .fit workout file.',
+          ),
+          const SizedBox(height: GimmySpacing.lg),
+          // Once a file is read, the picker shrinks to one line so the plan
+          // being confirmed is what fills the screen.
+          if (plan == null) ...[
+            _DropZone(isBusy: state.isBusy),
+            const SizedBox(height: GimmySpacing.sm),
+            const _FileHelp(),
+          ] else
+            _ChosenFile(filename: state.filename, isBusy: state.isBusy),
+          if (state.status == ImportStatus.failure) ...[
+            const SizedBox(height: GimmySpacing.md),
+            _ImportError(
+              message: state.errorMessage!,
+              filename: state.filename,
+            ),
+          ],
+          if (plan != null) ...[
+            const SizedBox(height: GimmySpacing.md),
+            _PlanSummary(plan: plan),
+            const SizedBox(height: GimmySpacing.lg),
+          ],
+        ],
+      ),
+    ),
+  ];
+
+  List<Widget> _steps(Plan? plan) => [
+    if (plan != null) ...[
+      SliverPadding(
+        padding: _padding,
+        sliver: SliverList.list(
+          children: [
+            _StepsLabel(),
+            const SizedBox(height: GimmySpacing.sm),
+          ],
+        ),
+      ),
+      SliverPadding(
+        padding: _padding,
+        sliver: SliverPlanStepList(plan: plan),
+      ),
+    ],
+    const SliverToBoxAdapter(child: SizedBox(height: GimmySpacing.lg)),
+  ];
 }
 
 /// Caption above the step list.
@@ -122,7 +233,6 @@ class _DropZone extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tokens = GimmyTokens.of(context);
 
     return GimmyCard(
       padding: const EdgeInsets.symmetric(
@@ -179,26 +289,84 @@ class _DropZone extends StatelessWidget {
                     const ImportFileRequested(),
                   ),
           ),
-          const SizedBox(height: GimmySpacing.md),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.lock_outline,
-                size: 14,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: GimmySpacing.xs),
-              Flexible(
-                child: Text(
-                  'PARSED ON DEVICE. NOTHING UPLOADED.',
-                  overflow: TextOverflow.ellipsis,
-                  style: tokens.labelMono.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The picked file, once parsed, with the way to pick another.
+class _ChosenFile extends StatelessWidget {
+  const _ChosenFile({required this.filename, required this.isBusy});
+
+  final String? filename;
+  final bool isBusy;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        Icon(Icons.description_outlined, color: theme.colorScheme.primary),
+        const SizedBox(width: GimmySpacing.sm),
+        Expanded(
+          child: Text(
+            filename ?? 'Workout file',
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyLarge,
+          ),
+        ),
+        TextButton(
+          onPressed: isBusy
+              ? null
+              : () =>
+                    context.read<ImportBloc>().add(const ImportFileRequested()),
+          child: const Text('Change file'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Where a .fit workout comes from — the one thing a first-timer cannot guess.
+class _FileHelp extends StatelessWidget {
+  const _FileHelp();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final body = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+
+    return Theme(
+      // ExpansionTile draws dividers above and below by default.
+      data: theme.copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(bottom: GimmySpacing.sm),
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        title: Text(
+          'How do I get a workout file?',
+          style: theme.textTheme.bodyLarge,
+        ),
+        children: [
+          Text(
+            'Build the workout in Garmin Connect, then export it as a .fit '
+            'file from the workout page on connect.garmin.com.',
+            style: body,
+          ),
+          const SizedBox(height: GimmySpacing.xs),
+          Text(
+            'Or plug in your watch and copy the file from its '
+            'GARMIN/Workouts folder.',
+            style: body,
+          ),
+          const SizedBox(height: GimmySpacing.xs),
+          Text(
+            'The file is read on this device and never uploaded.',
+            style: body,
           ),
         ],
       ),
@@ -257,10 +425,9 @@ class _ImportError extends StatelessWidget {
 
 /// Plan name and totals. The step list itself is a separate, lazy sliver.
 class _PlanSummary extends StatelessWidget {
-  const _PlanSummary({required this.plan, this.filename});
+  const _PlanSummary({required this.plan});
 
   final Plan plan;
-  final String? filename;
 
   @override
   Widget build(BuildContext context) {
@@ -270,106 +437,45 @@ class _PlanSummary extends StatelessWidget {
       secondsPerRep: AppConfig.estimatedSecondsPerRep,
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'PARSED PLAN',
-                style: tokens.labelMono.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () =>
-                  context.read<ImportBloc>().add(const ImportReset()),
-              child: const Text('RESET'),
-            ),
-          ],
-        ),
-        const SizedBox(height: GimmySpacing.sm),
-        GimmyCard(
-          isHighlighted: true,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return GimmyCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.verified_outlined,
-                    color: theme.colorScheme.primary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: GimmySpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(plan.name, style: theme.textTheme.headlineSmall),
-                        if (filename != null)
-                          Text(
-                            filename!,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  _ValidBadge(),
-                ],
+              Icon(
+                Icons.verified_outlined,
+                color: theme.colorScheme.primary,
+                size: 20,
               ),
-              const SizedBox(height: GimmySpacing.md),
-              Divider(color: tokens.cardBorder),
-              const SizedBox(height: GimmySpacing.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: StatTile(
-                      label: 'Est. duration',
-                      icon: Icons.schedule,
-                      value: DurationFormat.human(estimate),
-                    ),
-                  ),
-                  Expanded(
-                    child: StatTile(
-                      label: 'Steps',
-                      icon: Icons.format_list_numbered,
-                      value: '${plan.stepCount}',
-                    ),
-                  ),
-                ],
+              const SizedBox(width: GimmySpacing.sm),
+              Expanded(
+                child: Text(plan.name, style: theme.textTheme.headlineSmall),
               ),
             ],
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ValidBadge extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final tokens = GimmyTokens.of(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: GimmySpacing.sm,
-        vertical: GimmySpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(GimmyRadii.pill),
-      ),
-      child: Text(
-        'VALID',
-        style: tokens.labelMono.copyWith(color: theme.colorScheme.primary),
+          const SizedBox(height: GimmySpacing.md),
+          Divider(color: tokens.cardBorder),
+          const SizedBox(height: GimmySpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: StatTile(
+                  label: 'Est. duration',
+                  icon: Icons.schedule,
+                  value: DurationFormat.human(estimate),
+                ),
+              ),
+              Expanded(
+                child: StatTile(
+                  label: 'Steps',
+                  icon: Icons.format_list_numbered,
+                  value: '${plan.stepCount}',
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

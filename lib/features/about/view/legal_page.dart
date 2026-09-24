@@ -12,8 +12,10 @@ import '../widgets/info_card.dart';
 class LegalPage extends StatelessWidget {
   const LegalPage({super.key});
 
-  static Route<void> route() =>
-      GimmyPageRoute<void>(builder: (_) => const LegalPage());
+  static Route<void> route() => GimmyPageRoute<void>(
+    settings: const RouteSettings(name: 'legal'),
+    builder: (_) => const LegalPage(),
+  );
 
   /// Bump whenever the text below changes.
   static const lastRevised = '23 September 2026';
@@ -112,49 +114,53 @@ class LegalPage extends StatelessWidget {
     return GimmyScaffold(
       label: 'Legal',
       leading: BackButton(onPressed: () => Navigator.of(context).maybePop()),
-      child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: GimmySpacing.gutter),
-        children: [
-          const SizedBox(height: GimmySpacing.sm),
-          const SectionHeading(
-            eyebrow: 'Terms of use & disclaimer',
-            title: 'Legal notes & terms',
-          ),
-          const SizedBox(height: GimmySpacing.sm),
-          const _RevisionStrip(),
-          const SizedBox(height: GimmySpacing.md),
-          const InfoCard(
-            icon: Icons.medical_services_outlined,
-            title: 'Not a medical device',
-            isHighlighted: true,
-            paragraphs: [
-              'Gimmy is a workout guide. It does not diagnose, treat or '
-                  'prevent any condition, and its heart-rate readout is not '
-                  'for medical use.',
-              'Talk to a doctor before starting a new training programme, '
-                  'especially a high-intensity one or if you have a heart '
-                  'condition.',
-            ],
-          ),
-          for (final section in _sections) ...[
-            const SizedBox(height: GimmySpacing.md),
-            InfoCard(
-              icon: section.icon,
-              title: section.title,
-              paragraphs: section.paragraphs,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: GimmyLayout.readingWidth),
+          child: ListView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: GimmySpacing.gutter,
             ),
-          ],
-          const SizedBox(height: GimmySpacing.md),
-          const InfoCard(
-            icon: Icons.alternate_email,
-            title: 'Contact',
-            paragraphs: [
-              'Questions, bugs or takedown requests: open an issue at '
-                  'github.com/${AppConfig.author}/Gimmy.',
+            children: [
+              const SizedBox(height: GimmySpacing.sm),
+              const SectionHeading(title: 'Legal notes & terms'),
+              const SizedBox(height: GimmySpacing.sm),
+              const _RevisionStrip(),
+              const SizedBox(height: GimmySpacing.md),
+              const InfoCard(
+                icon: Icons.medical_services_outlined,
+                title: 'Not a medical device',
+                isHighlighted: true,
+                paragraphs: [
+                  'Gimmy is a workout guide. It does not diagnose, treat or '
+                      'prevent any condition, and its heart-rate readout is not '
+                      'for medical use.',
+                  'Talk to a doctor before starting a new training programme, '
+                      'especially a high-intensity one or if you have a heart '
+                      'condition.',
+                ],
+              ),
+              for (final section in _sections) ...[
+                const SizedBox(height: GimmySpacing.md),
+                InfoCard(
+                  icon: section.icon,
+                  title: section.title,
+                  paragraphs: section.paragraphs,
+                ),
+              ],
+              const SizedBox(height: GimmySpacing.md),
+              const InfoCard(
+                icon: Icons.alternate_email,
+                title: 'Contact',
+                paragraphs: [
+                  'Questions, bugs or takedown requests: open an issue at '
+                      'github.com/${AppConfig.author}/Gimmy.',
+                ],
+              ),
+              const SizedBox(height: GimmySpacing.lg),
             ],
           ),
-          const SizedBox(height: GimmySpacing.lg),
-        ],
+        ),
       ),
     );
   }

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../core/widgets/app_sidebar.dart';
 import '../../core/widgets/gimmy_page_route.dart';
 import '../../core/widgets/gimmy_scaffold.dart';
 import '../../data/fit/fit_file_picker.dart';
 import '../../data/storage/plan_repository.dart';
 import '../../data/storage/settings_repository.dart';
+import 'sidebar_stats.dart';
 import '../../features/import/bloc/import_bloc.dart';
 import '../../features/import/view/import_page.dart';
 
@@ -18,6 +20,7 @@ class ImportRoute extends StatelessWidget {
     super.key,
     this.canPop = true,
     this.pickFile = pickFitFile,
+    this.onSidebarSelect,
   });
 
   /// False on first launch, when there is nothing to go back to.
@@ -26,11 +29,21 @@ class ImportRoute extends StatelessWidget {
   /// Injectable so the route can be driven in tests without a platform channel.
   final FitFilePicker pickFile;
 
+  /// Desktop sidebar navigation away from Import. Null keeps the sidebar
+  /// inert, as it must be on first launch.
+  final ValueChanged<SidebarItem>? onSidebarSelect;
+
   static Route<bool> route({
     bool canPop = true,
     FitFilePicker pickFile = pickFitFile,
+    ValueChanged<SidebarItem>? onSidebarSelect,
   }) => GimmyPageRoute<bool>(
-    builder: (_) => ImportRoute(canPop: canPop, pickFile: pickFile),
+    settings: const RouteSettings(name: 'import'),
+    builder: (_) => ImportRoute(
+      canPop: canPop,
+      pickFile: pickFile,
+      onSidebarSelect: onSidebarSelect,
+    ),
   );
 
   @override
@@ -51,7 +64,10 @@ class ImportRoute extends StatelessWidget {
         // import stuck on screen after a successful save.
         canPop: canPop,
         child: GimmyScaffold(
-          label: 'Plan Import',
+          label: 'Import plan',
+          sidebarItem: SidebarItem.import,
+          onSidebarSelect: onSidebarSelect,
+          sidebarFooter: const SidebarStats(),
           leading: canPop
               ? BackButton(onPressed: () => Navigator.of(context).pop(false))
               : null,

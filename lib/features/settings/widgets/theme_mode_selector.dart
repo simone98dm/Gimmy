@@ -84,8 +84,10 @@ class _Segment extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minHeight: GimmyLayout.minTapTarget,
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

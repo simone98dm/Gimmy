@@ -5,12 +5,14 @@ import '../../../core/config/feature_flags.dart';
 import '../../../core/theme/gimmy_tokens.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/util/duration_format.dart';
+import '../../../core/widgets/desktop_layout.dart';
 import '../../../core/widgets/plan_step_tile.dart';
 import '../../../data/models/plan_step.dart';
 import '../../heart_rate/bloc/heart_rate_bloc.dart';
 import '../bloc/execution_bloc.dart';
 import '../widgets/completion_summary.dart';
 import '../widgets/execution_controls.dart';
+import '../widgets/execution_desktop.dart';
 import '../widgets/live_dot.dart';
 import '../widgets/metric_strip.dart';
 import '../widgets/timer_ring.dart';
@@ -44,6 +46,25 @@ class _ExecutionPageState extends State<ExecutionPage> {
   /// The last state the cues saw, so a listener call can tell what moved.
   late ExecutionState _previous = context.read<ExecutionBloc>().state;
 
+  /// Skip sits beside the primary control, so a mis-tap has to be cheap.
+  void _offerUndo(BuildContext context) {
+    final bloc = context.read<ExecutionBloc>();
+    ScaffoldMessenger.maybeOf(context)
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: const Text('Step skipped'),
+          duration: _undoWindow,
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () => bloc.add(const ExecutionSkipUndone()),
+          ),
+        ),
+      );
+  }
+
+  static const _undoWindow = Duration(seconds: 4);
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<ExecutionBloc, ExecutionState>(
@@ -52,8 +73,13 @@ class _ExecutionPageState extends State<ExecutionPage> {
       // not have to silence a speaker.
       listener: (context, state) {
         final cue = cueFor(_previous, state);
+        final didJustSkip = state.canUndoSkip && !_previous.canUndoSkip;
         _previous = state;
         if (cue != null && widget.areCuesEnabled) WorkoutCues.play(cue);
+        if (didJustSkip) _offerUndo(context);
+        if (!state.canUndoSkip) {
+          ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+        }
       },
       builder: (context, state) {
         return Stack(
@@ -79,20 +105,46 @@ class _Workout extends StatelessWidget {
   Widget build(BuildContext context) {
     // Past the last step there is nothing to draw underneath the summary.
     final step = state.currentStep ?? state.plan.steps.last;
+    final stage = _StageCard(state: state, step: step);
+    // Beside the stage card on a desktop, as the Stitch desktop screen has it.
+    final aside = isDesktopLayout(context)
+        ? [
+            if (step.notes case final notes?) ...[
+              _FormTipCard(notes: notes),
+              const SizedBox(height: GimmySpacing.md),
+            ],
+            StepLogCard(state: state),
+            const SizedBox(height: GimmySpacing.md),
+            _NextUpCard(state: state),
+          ]
+        : [
+            // The cue is about the set in progress, so it outranks what is next.
+            if (step.notes case final notes?) ...[
+              _FormTipCard(notes: notes),
+              const SizedBox(height: GimmySpacing.md),
+            ],
+            _NextUpCard(state: state),
+          ];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: GimmySpacing.gutter),
       child: Column(
         children: [
           const SizedBox(height: GimmySpacing.md),
-          _ProgressCard(state: state),
+          if (isDesktopLayout(context))
+            ExecutionTelemetryCard(state: state)
+          else
+            _ProgressCard(state: state),
           const SizedBox(height: GimmySpacing.md),
-          _StageCard(state: state, step: step),
-          const SizedBox(height: GimmySpacing.md),
-          _NextUpCard(state: state),
-          if (step.notes case final notes?) ...[
+          if (isDesktopLayout(context))
+            DesktopColumns(
+              start: stage,
+              end: Column(children: aside),
+            )
+          else ...[
+            stage,
             const SizedBox(height: GimmySpacing.md),
-            _FormTipCard(notes: notes),
+            ...aside,
           ],
           const SizedBox(height: GimmySpacing.lg),
         ],
@@ -111,11 +163,17 @@ class _ProgressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tokens = GimmyTokens.of(context);
-    final fraction = state.stepNumber / state.totalSteps;
+    // Steps behind the user, so the first step reads 0%, not 5%.
+    final fraction = state.currentIndex / state.totalSteps;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(GimmySpacing.md),
+      padding: const EdgeInsets.fromLTRB(
+        GimmySpacing.md,
+        GimmySpacing.xs,
+        GimmySpacing.xs,
+        GimmySpacing.md,
+      ),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,
         borderRadius: GimmyRadii.card,
@@ -138,37 +196,36 @@ class _ProgressCard extends StatelessWidget {
                 ),
               ),
               _IntensityChip(intensity: state.currentStep?.intensity),
+              const EndWorkoutButton(),
             ],
           ),
-          const SizedBox(height: GimmySpacing.sm),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(GimmyRadii.pill),
-            child: LinearProgressIndicator(
-              value: fraction,
-              minHeight: 8,
-              backgroundColor: theme.colorScheme.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation(
-                theme.colorScheme.primaryContainer,
+          const SizedBox(height: GimmySpacing.xs),
+          Padding(
+            padding: const EdgeInsets.only(right: GimmySpacing.sm),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(GimmyRadii.pill),
+              child: LinearProgressIndicator(
+                value: fraction,
+                minHeight: 8,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation(
+                  theme.colorScheme.primaryContainer,
+                ),
               ),
             ),
           ),
           const SizedBox(height: GimmySpacing.xs),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'SESSION PACING',
+          Padding(
+            padding: const EdgeInsets.only(right: GimmySpacing.sm),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '${(fraction * 100).round()}% DONE',
                 style: tokens.labelMono.copyWith(
-                  color: theme.colorScheme.outline,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              Text(
-                '${(fraction * 100).round()}% COMPLETE',
-                style: tokens.labelMono.copyWith(
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -231,19 +288,13 @@ class _StageCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(child: _TypeChip(step: step)),
-              const SizedBox(width: GimmySpacing.xs),
-              _TargetChip(step: step),
-            ],
-          ),
-          const SizedBox(height: GimmySpacing.sm),
           Text(
             step.name,
             textAlign: TextAlign.center,
-            style: theme.textTheme.headlineSmall,
+            // The desktop card has the room for the prototype's big title.
+            style: isDesktopLayout(context)
+                ? theme.textTheme.headlineLarge
+                : theme.textTheme.headlineSmall,
           ),
           const SizedBox(height: 2),
           Text(
@@ -253,7 +304,7 @@ class _StageCard extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: GimmySpacing.xs),
+          const SizedBox(height: GimmySpacing.md),
           _Dial(state: state, step: step),
           const SizedBox(height: GimmySpacing.md),
           const _Metrics(),
@@ -270,9 +321,14 @@ class _StageCard extends StatelessWidget {
 
   /// Fills the prototype's coaching-cue slot with something true of this step.
   static String _instruction(PlanStep step) => switch (step.type) {
-    StepType.timer => 'Hold until the timer runs out',
-    StepType.reps => 'Tap Next when the set is done',
-    StepType.open => 'Tap Next whenever you are ready',
+    StepType.timer => switch (step.intensity) {
+      StepIntensity.rest => 'Rest until the timer runs out',
+      StepIntensity.warmup ||
+      StepIntensity.cooldown => 'Easy pace until the timer runs out',
+      StepIntensity.active => 'Keep going until the timer runs out',
+    },
+    StepType.reps => 'Tap Done when the set is finished',
+    StepType.open => 'Tap Done whenever you are ready',
   };
 }
 
@@ -294,87 +350,6 @@ class _Metrics extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: GimmySpacing.md),
       child: MetricStrip(showBpm: isPaired, bpm: bpm),
-    );
-  }
-}
-
-/// The left chip: what kind of step this is.
-class _TypeChip extends StatelessWidget {
-  const _TypeChip({required this.step});
-
-  final PlanStep step;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final tokens = GimmyTokens.of(context);
-
-    final (icon, label) = switch (step.type) {
-      StepType.timer => (Icons.timer_outlined, 'Timed'),
-      StepType.reps => (Icons.repeat, 'Repetitions'),
-      StepType.open => (Icons.all_inclusive, 'Open ended'),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: GimmySpacing.sm,
-        vertical: 4,
-      ),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(GimmyRadii.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: theme.colorScheme.primary),
-          const SizedBox(width: GimmySpacing.xs),
-          Flexible(
-            child: Text(
-              label.toUpperCase(),
-              overflow: TextOverflow.ellipsis,
-              style: tokens.labelMono.copyWith(
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The right chip: what this step is asking for.
-class _TargetChip extends StatelessWidget {
-  const _TargetChip({required this.step});
-
-  final PlanStep step;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = GimmyTokens.of(context);
-    final amber = tokens.intensityRest;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: GimmySpacing.sm,
-        vertical: 4,
-      ),
-      decoration: BoxDecoration(
-        color: amber.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(GimmyRadii.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.bolt, size: 14, color: amber),
-          const SizedBox(width: 2),
-          Text(
-            'Target: ${stepTarget(step)}',
-            style: tokens.labelMono.copyWith(color: amber),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -412,11 +387,14 @@ class _Dial extends StatelessWidget {
       StepType.timer => DurationFormat.clock(
         Duration(seconds: state.remainingSeconds),
       ),
-      StepType.reps => '${step.repCount}',
+      StepType.reps => '×${step.repCount}',
       StepType.open => '––',
     };
 
+    final diameter = isDesktopLayout(context) ? 320.0 : 256.0;
+
     return TimerRing(
+      diameter: diameter,
       progress: step.isTimer ? state.timerProgress : 1,
       color: step.isTimer && !state.isTimerRunning
           ? color.withValues(alpha: 0.4)
@@ -432,43 +410,21 @@ class _Dial extends StatelessWidget {
               letterSpacing: 2,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            readout,
-            style: tokens.metricDisplayMobile.copyWith(
-              color: step.isTimer && color == tokens.timerCritical
-                  ? theme.colorScheme.error
-                  : theme.colorScheme.onSurface,
-            ),
-          ),
           const SizedBox(height: GimmySpacing.xs),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: GimmySpacing.sm,
-              vertical: 2,
-            ),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(
-                alpha: 0.8,
+          // Sized to the ring's inside, so a long countdown shrinks rather
+          // than spilling over the stroke.
+          SizedBox(
+            width: diameter * 0.78,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                readout,
+                style: tokens.metricDisplayMobile.copyWith(
+                  color: step.isTimer && color == tokens.timerCritical
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.onSurface,
+                ),
               ),
-              borderRadius: BorderRadius.circular(GimmyRadii.pill),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.fitness_center,
-                  size: 14,
-                  color: theme.colorScheme.primaryContainer,
-                ),
-                const SizedBox(width: GimmySpacing.xs),
-                Text(
-                  'STEP ${state.stepNumber} / ${state.totalSteps}',
-                  style: tokens.labelMono.copyWith(
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -477,7 +433,7 @@ class _Dial extends StatelessWidget {
   }
 }
 
-/// What is coming, plus the way out of the workout.
+/// What is coming next.
 class _NextUpCard extends StatelessWidget {
   const _NextUpCard({required this.state});
 
@@ -519,7 +475,7 @@ class _NextUpCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'NEXT UP IN ROUTINE',
+                  'NEXT UP',
                   style: tokens.labelMono.copyWith(
                     color: theme.colorScheme.primary,
                   ),
@@ -540,48 +496,7 @@ class _NextUpCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: GimmySpacing.xs),
-          _FinishButton(),
         ],
-      ),
-    );
-  }
-}
-
-/// Ends the workout early. Routed through the same confirmation as leaving,
-/// because steps are still outstanding and the session is recorded as
-/// abandoned either way.
-class _FinishButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final tokens = GimmyTokens.of(context);
-
-    return Material(
-      color: theme.colorScheme.surfaceContainerHigh,
-      borderRadius: GimmyRadii.cell,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => Navigator.of(context).maybePop(),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: GimmySpacing.sm,
-            vertical: GimmySpacing.sm,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'FINISH',
-                style: tokens.labelMono.copyWith(
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: GimmySpacing.xs),
-              Icon(Icons.flag, size: 16, color: theme.colorScheme.primary),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -609,36 +524,12 @@ class _FormTipCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'EXERCISE CUE',
-                style: tokens.labelMono.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: GimmySpacing.sm,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(GimmyRadii.pill),
-                ),
-                child: Text(
-                  'Form Tip',
-                  style: tokens.labelMono.copyWith(
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            'FORM TIP',
+            style: tokens.labelMono.copyWith(color: theme.colorScheme.primary),
           ),
           const SizedBox(height: GimmySpacing.sm),
-          Text(notes, style: theme.textTheme.bodyMedium),
+          Text(notes, style: theme.textTheme.bodyLarge),
         ],
       ),
     );

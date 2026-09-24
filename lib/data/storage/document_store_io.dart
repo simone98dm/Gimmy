@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'document_store.dart';
+import '../../core/logging/app_log.dart';
 
 /// Opens [name] as a file in the app's documents directory.
 DocumentStore openDocumentStore(String name) => FileDocumentStore(name);
@@ -45,10 +45,14 @@ class FileDocumentStore implements DocumentStore {
       if (contents.trim().isEmpty) return null;
       return jsonDecode(contents);
     } on FormatException catch (error) {
-      debugPrint('gimmy: $filename holds invalid JSON, ignoring it: $error');
+      AppLog.warning(
+        'storage',
+        '$filename holds invalid JSON, ignoring it',
+        error,
+      );
       return null;
     } on FileSystemException catch (error) {
-      debugPrint('gimmy: could not read $filename: $error');
+      AppLog.error('storage', 'could not read $filename', error);
       return null;
     }
   }

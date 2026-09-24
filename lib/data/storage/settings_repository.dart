@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_settings.dart';
+import '../../core/logging/app_log.dart';
 
 /// Stores the user's settings in `shared_preferences`, as one JSON blob.
 ///
@@ -31,9 +31,7 @@ class SettingsRepository {
     try {
       return AppSettings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
     } on Object catch (error) {
-      debugPrint(
-        'gimmy: stored settings were unreadable, using defaults: $error',
-      );
+      AppLog.warning('storage', 'settings unreadable, using defaults', error);
       return const AppSettings();
     }
   }

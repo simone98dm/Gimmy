@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gimmy/app/bloc/app_bloc.dart';
 import 'package:gimmy/core/theme/app_theme.dart';
 import 'package:gimmy/core/widgets/app_footer.dart';
+import 'package:gimmy/core/widgets/desktop_layout.dart';
 import 'package:gimmy/core/widgets/gimmy_scaffold.dart';
 import 'package:gimmy/data/fit/fit_workout_parser.dart';
 import 'package:gimmy/data/models/plan.dart';
@@ -47,6 +48,9 @@ List<WorkoutSession> sampleSessions(DateTime today) => [
     ),
 ];
 
+/// Pinned, so the calendar and streak draw the same image every day.
+final _today = DateTime(2026, 9, 24);
+
 void main() {
   late Directory tempDir;
 
@@ -74,7 +78,7 @@ void main() {
 
     if (withPlan) {
       await planRepository.save(samplePlan());
-      for (final session in sampleSessions(DateTime.now())) {
+      for (final session in sampleSessions(_today)) {
         await sessionRepository.upsert(session);
       }
     }
@@ -93,9 +97,17 @@ void main() {
     required Widget page,
     required Brightness brightness,
     bool withPlan = true,
+    bool desktop = false,
   }) async {
-    tester.view.physicalSize = const Size(1179, 2556);
-    tester.view.devicePixelRatio = 3;
+    if (desktop) {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      debugDesktopLayoutEnabled = true;
+      addTearDown(() => debugDesktopLayoutEnabled = false);
+    } else {
+      tester.view.physicalSize = const Size(1179, 2556);
+      tester.view.devicePixelRatio = 3;
+    }
     addTearDown(tester.view.reset);
 
     // Seeding touches the real filesystem, and `testWidgets` runs under fake
@@ -137,7 +149,7 @@ void main() {
       tester,
       name: 'dashboard_dark',
       tab: GimmyTab.dashboard,
-      page: const DashboardPage(),
+      page: DashboardPage(clock: () => _today, onStartWorkout: () {}),
       brightness: Brightness.dark,
     );
   });
@@ -149,17 +161,17 @@ void main() {
       tester,
       name: 'dashboard_light',
       tab: GimmyTab.dashboard,
-      page: const DashboardPage(),
+      page: DashboardPage(clock: () => _today, onStartWorkout: () {}),
       brightness: Brightness.light,
     );
   });
 
-  testWidgets('active page: start banner above the step list', (tester) async {
+  testWidgets('active page: plan heading above the step list', (tester) async {
     await capture(
       tester,
       name: 'active_dark',
       tab: GimmyTab.active,
-      page: const ActivePage(),
+      page: ActivePage(onStartWorkout: () {}),
       brightness: Brightness.dark,
     );
   });
@@ -182,6 +194,28 @@ void main() {
       tab: GimmyTab.settings,
       page: SettingsPage(onImport: () {}, onWiped: () {}),
       brightness: Brightness.dark,
+    );
+  });
+
+  testWidgets('desktop: sidebar, the plan in one column', (tester) async {
+    await capture(
+      tester,
+      name: 'active_desktop_dark',
+      tab: GimmyTab.active,
+      page: ActivePage(onStartWorkout: () {}),
+      brightness: Brightness.dark,
+      desktop: true,
+    );
+  });
+
+  testWidgets('desktop: settings as a 2x2 grid', (tester) async {
+    await capture(
+      tester,
+      name: 'settings_desktop_dark',
+      tab: GimmyTab.settings,
+      page: SettingsPage(onImport: () {}, onWiped: () {}),
+      brightness: Brightness.dark,
+      desktop: true,
     );
   });
 }

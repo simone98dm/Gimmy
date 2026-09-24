@@ -73,6 +73,12 @@ them checks `GimmyMotion.isReduced(context)` and stays still when the platform a
   calendar days and the workout controls all had this.
 - `AppConfig.chromeBlurSigma` controls the frosted header/nav blur, which is the most expensive
   thing drawn per frame. It ships at 0; raise it to 8–16 on hardware that can afford it.
+- **Log through `AppLog`** (`core/logging/app_log.dart`), never `print`/`debugPrint`/
+  `dart:developer` directly — `developer.log` is a no-op on dart2js, so the web would log
+  nothing. Bloc events are logged by `LoggingBlocObserver` and routes by
+  `LoggingNavigatorObserver`, so only log *outcomes* by hand. Give every route, dialog and
+  sheet a `RouteSettings(name:)` so the log can say what opened. Pass the stack trace to
+  `addError`.
 - **Do not put `InkSparkle` back.** It compiles a fragment shader on first use and stalls the
   first tap. The theme uses `InkRipple`.
 - **Tab pages are all alive** inside the `IndexedStack`, so `context.watch` on `AppBloc` rebuilds
@@ -116,8 +122,9 @@ starting with an underscore, so constructors injecting into private fields canno
 - Release mode does not run on an iOS simulator; use a physical device.
 - `.gitignore` used to exclude `test/features` and `test/app`, which silently hid most of the
   suite. If tests seem to vanish from a diff, check there first.
-- On the web the layout is capped at phone width and centred (`_PhoneFrame`); the design is a
-  4-column mobile grid and gains nothing from a desktop's width.
+- On the web, from `GimmyLayout.desktopBreakpoint` (1200px) the shell swaps the bottom nav for
+  a sidebar and pages use their `*_desktop.dart` layouts. Below it, the phone layout is capped at
+  560px and centred (`_PhoneFrame`). Prose pages (About, Legal) cap at `GimmyLayout.readingWidth`.
 - Calories and effort are built but hidden behind `FeatureFlags`, off by default, because
   there is no real data source for them. BPM shows whenever a heart-rate sensor is paired.
 - **Heart rate is standard BLE only** (`flutter_blue_plus`, Heart Rate Service 0x180D). A Garmin

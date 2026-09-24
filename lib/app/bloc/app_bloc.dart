@@ -9,6 +9,7 @@ import '../../data/storage/plan_repository.dart';
 import '../../data/storage/session_repository.dart';
 import '../../data/storage/settings_repository.dart';
 import '../../data/streak_calculator.dart';
+import '../../core/logging/app_log.dart';
 
 part 'app_event.dart';
 part 'app_state.dart';
@@ -56,6 +57,11 @@ class AppBloc extends Bloc<AppEvent, AppState> {
     final settings = await _settingsRepository.load();
     final plan = await _planRepository.load();
     final sessions = await _sessionRepository.loadAll();
+    AppLog.info(
+      'app',
+      'loaded ${plan == null ? 'no plan' : 'plan "${plan.name}"'}, '
+          '${sessions.length} sessions, theme ${settings.themeMode.name}',
+    );
 
     emit(
       AppState(
@@ -94,6 +100,7 @@ class AppBloc extends Bloc<AppEvent, AppState> {
     await _planRepository.clear();
     await _sessionRepository.clear();
     await _settingsRepository.clear();
+    AppLog.info('app', 'profile wiped');
 
     emit(const AppState(status: AppStatus.ready));
   }

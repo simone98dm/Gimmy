@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gimmy/core/theme/app_theme.dart';
+import 'package:gimmy/core/widgets/app_sidebar.dart';
+import 'package:gimmy/core/widgets/desktop_layout.dart';
 import 'package:gimmy/core/widgets/gimmy_scaffold.dart';
 import 'package:gimmy/data/fit/fit_workout_parser.dart';
 import 'package:gimmy/data/models/plan.dart';
@@ -46,9 +48,17 @@ void main() {
     required String name,
     required Future<void> Function(ExecutionBloc bloc) drive,
     Brightness brightness = Brightness.dark,
+    bool desktop = false,
   }) async {
-    tester.view.physicalSize = const Size(1179, 2556);
-    tester.view.devicePixelRatio = 3;
+    if (desktop) {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      debugDesktopLayoutEnabled = true;
+      addTearDown(() => debugDesktopLayoutEnabled = false);
+    } else {
+      tester.view.physicalSize = const Size(1179, 2556);
+      tester.view.devicePixelRatio = 3;
+    }
     addTearDown(tester.view.reset);
 
     late final ExecutionBloc bloc;
@@ -75,6 +85,7 @@ void main() {
             value: bloc,
             child: GimmyScaffold(
               label: 'Workout',
+              sidebarItem: SidebarItem.active,
               child: ExecutionPage(onDone: () {}),
             ),
           ),
@@ -108,7 +119,7 @@ void main() {
     );
   });
 
-  testWidgets('a reps step, where the control becomes Next', (tester) async {
+  testWidgets('a reps step, where the control becomes Done', (tester) async {
     await capture(
       tester,
       name: 'execution_reps',
@@ -131,6 +142,25 @@ void main() {
           await pumpEventQueue(times: 10);
         }
       },
+    );
+  });
+
+  testWidgets('desktop: stage card beside next-up', (tester) async {
+    await capture(
+      tester,
+      name: 'execution_desktop',
+      drive: (bloc) async {
+        // Step 3 of the sample is a timed rest: two steps behind it.
+        bloc.add(const ExecutionPrimaryPressed());
+        await pumpEventQueue(times: 50);
+        await ticker.tick(300);
+        bloc.add(const ExecutionSkipped());
+        await pumpEventQueue(times: 50);
+        bloc.add(const ExecutionPrimaryPressed());
+        await pumpEventQueue(times: 50);
+        await ticker.tick(20);
+      },
+      desktop: true,
     );
   });
 }
