@@ -5,6 +5,13 @@ written by [release-please](https://github.com/googleapis/release-please) from
 [Conventional Commits](https://www.conventionalcommits.org/); do not edit the
 released sections by hand.
 
+## [1.3.0](https://github.com/simone98dm/Gimmy/compare/v1.2.0...v1.3.0) (2026-09-25)
+
+
+### Features
+
+* add tests for session comparison and detail pages ([7adaf38](https://github.com/simone98dm/Gimmy/commit/7adaf383aeead4bae7d3f5c743c0ea22308863b4))
+
 ## [1.2.0](https://github.com/simone98dm/Gimmy/compare/v1.1.0...v1.2.0) (2026-09-24)
 
 
