@@ -29,6 +29,14 @@ class Plan extends Equatable {
 
   int get stepCount => steps.length;
 
+  /// Stands in for a filename on the plan built into the app, so the sample
+  /// survives storage without a schema change and shows honestly where a
+  /// file name would be.
+  static const sampleSourceFilename = 'Built-in sample';
+
+  /// The bundled sample, not a plan the user imported.
+  bool get isSample => sourceFilename == sampleSourceFilename;
+
   /// Sum of every step's duration, with reps steps estimated.
   ///
   /// This is a preview figure only — a real session's length depends on how
@@ -50,6 +58,20 @@ class Plan extends Equatable {
           step.name,
     ];
   }
+
+  /// This plan with [exerciseId] as the demo of every step named [name];
+  /// null takes the demo away. Chosen per exercise, not per step, so every
+  /// set of "Squat" shows the same one.
+  Plan withExercise(String name, String? exerciseId) => copyWith(
+    steps: List.unmodifiable([
+      for (final step in steps)
+        step.name != name
+            ? step
+            : exerciseId == null
+            ? step.copyWith(clearExerciseId: true)
+            : step.copyWith(exerciseId: exerciseId),
+    ]),
+  );
 
   /// Estimated seconds spent at each intensity, for the intensity mix.
   Map<StepIntensity, int> secondsByIntensity({required int secondsPerRep}) => {

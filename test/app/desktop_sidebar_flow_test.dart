@@ -1,3 +1,5 @@
+import 'package:gimmy/data/exercises/exercise_demos.dart';
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -16,6 +18,7 @@ import 'package:gimmy/data/storage/session_repository.dart';
 import 'package:gimmy/data/storage/settings_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_exercise_demos.dart';
 import '../support/fake_heart_rate_monitor.dart';
 import '../support/pump_until.dart';
 import '../support/sample_fit.dart';
@@ -63,6 +66,9 @@ void main() {
       await tester.pumpWidget(
         MultiRepositoryProvider(
           providers: [
+            RepositoryProvider(
+              create: (_) => ExerciseDemos(media: FakeExerciseMediaStore()),
+            ),
             RepositoryProvider.value(value: planRepository),
             RepositoryProvider(
               create: (_) => SessionRepository(

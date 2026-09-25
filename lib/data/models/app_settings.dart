@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart' show ThemeMode;
 
+import '../../core/theme/gimmy_theme_id.dart';
+
 /// Everything the user can change, persisted locally.
 ///
 /// The metric feature flags are deliberately *not* here: they live in
@@ -10,7 +12,7 @@ import 'package:flutter/material.dart' show ThemeMode;
 class AppSettings extends Equatable {
   const AppSettings({
     this.themeMode = ThemeMode.system,
-    this.accentColor,
+    this.themeId = GimmyThemeId.fallback,
     this.activePlanId,
     this.heartRateMonitorId,
     this.heartRateMonitorName,
@@ -20,9 +22,9 @@ class AppSettings extends Equatable {
   /// Applies immediately when changed. Defaults to following the OS.
   final ThemeMode themeMode;
 
-  /// Phase 3. Stored so the choice survives the feature landing; the Settings
-  /// page shows the control disabled until then.
-  final String? accentColor;
+  /// The color theme applied on top of light/dark. Applies immediately when
+  /// changed.
+  final GimmyThemeId themeId;
 
   /// The plan the Dashboard starts. Null until the first successful import.
   final String? activePlanId;
@@ -43,7 +45,7 @@ class AppSettings extends Equatable {
 
   Map<String, dynamic> toJson() => {
     'themeMode': themeMode.name,
-    if (accentColor != null) 'accentColor': accentColor,
+    'themeId': themeId.name,
     if (activePlanId != null) 'activePlanId': activePlanId,
     if (heartRateMonitorId != null) 'heartRateMonitorId': heartRateMonitorId,
     if (heartRateMonitorName != null)
@@ -59,7 +61,8 @@ class AppSettings extends Equatable {
         // A settings file written by a newer build should not brick the app.
         orElse: () => ThemeMode.system,
       ),
-      accentColor: json['accentColor'] as String?,
+      // The old 'accentColor' key from before themes shipped is ignored.
+      themeId: GimmyThemeId.fromName(json['themeId'] as String?),
       activePlanId: json['activePlanId'] as String?,
       heartRateMonitorId: json['heartRateMonitorId'] as String?,
       heartRateMonitorName: json['heartRateMonitorName'] as String?,
@@ -71,7 +74,7 @@ class AppSettings extends Equatable {
   /// `copyWith` cannot clear a nullable field, so clearing is explicit.
   AppSettings copyWith({
     ThemeMode? themeMode,
-    String? accentColor,
+    GimmyThemeId? themeId,
     String? activePlanId,
     String? heartRateMonitorId,
     String? heartRateMonitorName,
@@ -79,7 +82,7 @@ class AppSettings extends Equatable {
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
-      accentColor: accentColor ?? this.accentColor,
+      themeId: themeId ?? this.themeId,
       activePlanId: activePlanId ?? this.activePlanId,
       heartRateMonitorId: heartRateMonitorId ?? this.heartRateMonitorId,
       heartRateMonitorName: heartRateMonitorName ?? this.heartRateMonitorName,
@@ -89,7 +92,7 @@ class AppSettings extends Equatable {
 
   AppSettings withoutActivePlan() => AppSettings(
     themeMode: themeMode,
-    accentColor: accentColor,
+    themeId: themeId,
     heartRateMonitorId: heartRateMonitorId,
     heartRateMonitorName: heartRateMonitorName,
     areCuesEnabled: areCuesEnabled,
@@ -97,7 +100,7 @@ class AppSettings extends Equatable {
 
   AppSettings withoutHeartRateMonitor() => AppSettings(
     themeMode: themeMode,
-    accentColor: accentColor,
+    themeId: themeId,
     activePlanId: activePlanId,
     areCuesEnabled: areCuesEnabled,
   );
@@ -105,7 +108,7 @@ class AppSettings extends Equatable {
   @override
   List<Object?> get props => [
     themeMode,
-    accentColor,
+    themeId,
     activePlanId,
     heartRateMonitorId,
     heartRateMonitorName,

@@ -55,12 +55,16 @@ class DashboardHero extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const GimmyBadge(label: 'Active plan'),
+                      GimmyBadge(
+                        label: plan.isSample ? 'Sample plan' : 'Active plan',
+                      ),
                       const SizedBox(width: GimmySpacing.sm),
                       Flexible(
                         child: Text(
-                          'IMPORTED ${DateFormat.MMMd().format(plan.importedAt).toUpperCase()}'
-                          ' · ${plan.sourceFilename}',
+                          plan.isSample
+                              ? 'IMPORT YOUR OWN FROM SETTINGS'
+                              : 'IMPORTED ${DateFormat.MMMd().format(plan.importedAt).toUpperCase()}'
+                                    ' · ${plan.sourceFilename}',
                           overflow: TextOverflow.ellipsis,
                           style: tokens.labelMono.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
@@ -182,7 +186,7 @@ class IntensityProfile extends StatelessWidget {
             'SESSION INTENSITY PROFILE',
             style: tokens.labelMono.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
-              letterSpacing: 1.2,
+              letterSpacing: GimmyType.capsTracking,
             ),
           ),
           const SizedBox(height: GimmySpacing.md),

@@ -39,7 +39,7 @@ class MetricStrip extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 320),
       padding: const EdgeInsets.all(GimmySpacing.xs),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
+        color: tokens.insetSurface,
         borderRadius: GimmyRadii.cell,
       ),
       child: Row(
@@ -109,7 +109,7 @@ class _Cell extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: GimmySpacing.xxs),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -120,10 +120,8 @@ class _Cell extends StatelessWidget {
                 Text(
                   value,
                   // Glanceable from the floor, like the countdown above it.
-                  style: tokens.metricMd.copyWith(
+                  style: tokens.metricLg.copyWith(
                     color: valueColor ?? theme.colorScheme.onSurface,
-                    fontSize: 28,
-                    height: 1,
                   ),
                 ),
               ],

@@ -1,3 +1,5 @@
+import 'package:gimmy/data/exercises/exercise_demos.dart';
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -11,6 +13,7 @@ import 'package:gimmy/data/storage/plan_repository.dart';
 import 'package:gimmy/data/storage/settings_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_exercise_demos.dart';
 import '../support/sample_fit.dart';
 
 /// Drives the real Import route end to end: pick, preview, confirm, and out.
@@ -37,6 +40,9 @@ void main() {
   }) {
     return MultiRepositoryProvider(
       providers: [
+        RepositoryProvider(
+          create: (_) => ExerciseDemos(media: FakeExerciseMediaStore()),
+        ),
         RepositoryProvider(
           create: (_) => PlanRepository(
             store: FileDocumentStore('plan.json', directory: tempDir),
@@ -69,6 +75,27 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       await Future<void>.delayed(const Duration(milliseconds: 5));
     }
+  }
+
+  for (final canPop in [true, false]) {
+    testWidgets(
+      'offers the sample only with no plan behind (canPop: $canPop)',
+      (tester) async {
+        await tester.runAsync(() async {
+          final preferences = await SharedPreferences.getInstance();
+          await tester.pumpWidget(
+            harness(canPop: canPop, preferences: preferences, onResult: (_) {}),
+          );
+          await tester.tap(find.text('open'));
+          await settle(tester);
+        });
+
+        expect(
+          find.text('Try a sample workout', skipOffstage: false),
+          canPop ? findsNothing : findsOneWidget,
+        );
+      },
+    );
   }
 
   for (final canPop in [true, false]) {

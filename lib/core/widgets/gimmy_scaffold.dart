@@ -24,6 +24,7 @@ class GimmyScaffold extends StatelessWidget {
     this.sidebarItem,
     this.onSidebarSelect,
     this.sidebarFooter,
+    this.extendsToBottomEdge = false,
   });
 
   /// Page name shown in the header.
@@ -51,6 +52,13 @@ class GimmyScaffold extends StatelessWidget {
   /// The app layer's training summary, at the foot of the sidebar.
   final Widget? sidebarFooter;
 
+  /// Lets the page run under the home indicator instead of stopping above
+  /// it, keeping the bottom inset in its `MediaQuery` so it can pad its own
+  /// content. For a page with its own bottom bar (the workout), which should
+  /// meet the screen edge like any system bar, not float over a strip of
+  /// background.
+  final bool extendsToBottomEdge;
+
   bool get _showFooter => tab != null && onSelectTab != null;
 
   @override
@@ -60,6 +68,8 @@ class GimmyScaffold extends StatelessWidget {
     final insets = MediaQuery.paddingOf(context);
     final bottomChrome = _showFooter
         ? GimmyLayout.footerHeight + insets.bottom
+        : extendsToBottomEdge
+        ? 0.0
         : insets.bottom;
 
     return Scaffold(
@@ -69,7 +79,7 @@ class GimmyScaffold extends StatelessWidget {
             child: MediaQuery.removePadding(
               context: context,
               removeTop: true,
-              removeBottom: true,
+              removeBottom: !extendsToBottomEdge,
               child: Padding(
                 // Exactly the chrome, no more: the page runs full height and
                 // is cut off precisely where the footer begins. Pages add

@@ -1,338 +1,290 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/theme/gimmy_tokens.dart';
+import '../../../core/theme/motion.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/util/duration_format.dart';
-import '../../../core/widgets/gimmy_badge.dart';
 import '../../../core/widgets/plan_step_tile.dart';
 import '../../../data/models/plan_step.dart';
+import '../../../data/models/step_record.dart';
 import '../bloc/execution_bloc.dart';
 import 'execution_controls.dart';
-import 'live_dot.dart';
+import 'step_demo_pager.dart';
+import 'step_stage.dart';
 
-/// The pieces of the Stitch desktop workout screen the phone layout does not
-/// have, each fed by the running session rather than the prototype's
-/// invented telemetry.
-
-/// Across the top: live state and position, the session's figures, then the
-/// progress bar.
-class ExecutionTelemetryCard extends StatelessWidget {
-  const ExecutionTelemetryCard({super.key, required this.state});
+/// The workout on a desktop: a progress strip across the top, then two
+/// columns with no cards — the step and its controls on the left, the whole
+/// plan on the right with the current step kept in view.
+class DesktopRunner extends StatelessWidget {
+  const DesktopRunner({super.key, required this.state});
 
   final ExecutionState state;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final tokens = GimmyTokens.of(context);
-    // Steps behind the user, so the first step reads 0%, not 5%.
-    final fraction = state.currentIndex / state.totalSteps;
-    final step = state.currentStep;
+    // Past the last step there is nothing to draw underneath the summary.
+    final step = state.currentStep ?? state.plan.steps.last;
 
-    return Container(
-      padding: const EdgeInsets.all(GimmySpacing.md),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: GimmyRadii.card,
-        border: Border.all(color: tokens.cardBorder),
-        boxShadow: tokens.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              LiveDot(isLive: state.isTimerRunning),
-              const SizedBox(width: GimmySpacing.xs),
-              Text(
-                state.isTimerRunning ? 'RUNNING' : 'PAUSED',
-                style: tokens.labelMono.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(width: GimmySpacing.md),
-              Expanded(
-                child: Text(
-                  'STEP ${state.stepNumber} OF ${state.totalSteps}'
-                  '${step == null ? '' : ' · ${step.name.toUpperCase()}'}',
-                  overflow: TextOverflow.ellipsis,
-                  style: tokens.labelMono.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ),
-              _Figure(
-                icon: Icons.timer_outlined,
-                label: 'Active',
-                value: DurationFormat.clock(
-                  Duration(seconds: state.totalActiveSeconds),
-                ),
-              ),
-              const SizedBox(width: GimmySpacing.lg),
-              _Figure(
-                icon: Icons.check_circle_outline,
-                label: 'Done',
-                value: '${state.stepsCompleted}',
-              ),
-              const SizedBox(width: GimmySpacing.lg),
-              _Figure(
-                icon: Icons.skip_next_outlined,
-                label: 'Skipped',
-                value: '${state.stepsSkipped}',
-                color: tokens.intensityRest,
-              ),
-              if (step != null) ...[
-                const SizedBox(width: GimmySpacing.lg),
-                GimmyBadge(
-                  label: step.intensity.name,
-                  color: intensityColor(context, step.intensity),
-                ),
-              ],
-              const SizedBox(width: GimmySpacing.sm),
-              const EndWorkoutButton(),
-            ],
-          ),
-          const SizedBox(height: GimmySpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'WORKOUT PROGRESSION',
-                  style: tokens.labelMono.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              Text(
-                '${(fraction * 100).round()}% DONE',
-                style: tokens.labelMono.copyWith(
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: GimmySpacing.xs),
-          GimmyMeter(value: fraction, height: 8),
-        ],
-      ),
-    );
-  }
-}
-
-class _Figure extends StatelessWidget {
-  const _Figure({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final tokens = GimmyTokens.of(context);
-
-    return Row(
+    return Column(
       children: [
-        Icon(icon, size: 18, color: color ?? theme.colorScheme.primary),
-        const SizedBox(width: GimmySpacing.xs),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label.toUpperCase(),
-              style: tokens.labelMono.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+        ProgressStrip(
+          state: state,
+          trailing: _Figures(state: state),
+        ),
+        const SizedBox(height: GimmySpacing.md),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 5,
+                child: _Stage(state: state, step: step),
               ),
-            ),
-            Text(
-              value,
-              style: tokens.metricMd.copyWith(
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-          ],
+              const SizedBox(width: GimmySpacing.xl),
+              Expanded(flex: 4, child: _PlanList(state: state)),
+            ],
+          ),
         ),
       ],
     );
   }
 }
 
-/// A window on the plan around the current step: the one just done, the one
-/// running, and what is queued — the prototype's set matrix.
-class StepLogCard extends StatelessWidget {
-  const StepLogCard({super.key, required this.state});
+/// "5:20 active · 1 done · 1 skipped", in mono so it does not jitter.
+class _Figures extends StatelessWidget {
+  const _Figures({required this.state});
 
   final ExecutionState state;
-
-  static const _before = 1;
-  static const _after = 3;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tokens = GimmyTokens.of(context);
-    final steps = state.plan.steps;
-    final first = (state.currentIndex - _before).clamp(0, steps.length - 1);
-    final last = (state.currentIndex + _after).clamp(0, steps.length - 1);
+    return Text(
+      '${DurationFormat.clock(Duration(seconds: state.totalActiveSeconds))} '
+      'active · ${state.stepsCompleted} done · ${state.stepsSkipped} skipped',
+      style: GimmyTokens.of(context).labelMono
+          .copyWith(color: theme.colorScheme.onSurfaceVariant),
+    );
+  }
+}
 
-    return Container(
-      padding: const EdgeInsets.all(GimmySpacing.md),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainer,
-        borderRadius: GimmyRadii.card,
-        border: Border.all(color: tokens.cardBorder),
-        boxShadow: tokens.cardShadow,
-      ),
+class _Stage extends StatelessWidget {
+  const _Stage({required this.state, required this.step});
+
+  final ExecutionState state;
+  final PlanStep step;
+
+  static const double _dial = 320;
+
+  @override
+  Widget build(BuildContext context) {
+    final bloc = context.read<ExecutionBloc>();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(vertical: GimmySpacing.lg),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'STEP LOG',
-                  style: tokens.labelMono.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-              Text(
-                '${state.stepsCompleted + state.stepsSkipped} / '
-                '${state.totalSteps} THROUGH',
-                style: tokens.labelMono.copyWith(
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: GimmySpacing.sm),
-          for (var i = first; i <= last; i++)
-            _LogRow(
-              position: i + 1,
-              step: steps[i],
-              phase: i < state.currentIndex
-                  ? _Phase.done
-                  : i == state.currentIndex
-                  ? _Phase.current
-                  : _Phase.queued,
-              isLive: state.isTimerRunning,
+          StepHeading(index: state.currentIndex, step: step),
+          if (step.notes case final notes?) ...[
+            const SizedBox(height: GimmySpacing.sm),
+            FormTipLine(key: ValueKey(state.currentIndex), notes: notes),
+          ],
+          const SizedBox(height: GimmySpacing.lg),
+          // The demo, when there is one, beside the dial: no swipe on a
+          // desktop, and room for both.
+          LayoutBuilder(
+            builder: (context, constraints) => StepDemoLoader(
+              key: ValueKey(state.currentIndex),
+              step: step,
+              builder: (context, demo) {
+                if (demo == null) {
+                  return StepDial(state: state, step: step, diameter: _dial);
+                }
+                final size = ((constraints.maxWidth - GimmySpacing.lg) / 2)
+                    .clamp(0.0, _dial);
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    StepDial(state: state, step: step, diameter: size),
+                    const SizedBox(width: GimmySpacing.lg),
+                    StepDemoFace(image: demo, stepName: step.name, size: size),
+                  ],
+                );
+              },
             ),
+          ),
+          const SizedBox(height: GimmySpacing.lg),
+          const LiveMetrics(),
+          ExecutionControls(
+            state: state,
+            showKeyHints: true,
+            onAdjust: () => bloc.add(const ExecutionTimerAdjusted()),
+            onPrimary: () => bloc.add(const ExecutionPrimaryPressed()),
+            onSkip: () => bloc.add(const ExecutionSkipped()),
+          ),
         ],
       ),
     );
   }
 }
 
-enum _Phase { done, current, queued }
+/// Every step of the plan, marked with what happened to it, the current one
+/// highlighted and scrolled into view as the workout moves on.
+class _PlanList extends StatefulWidget {
+  const _PlanList({required this.state});
 
-class _LogRow extends StatelessWidget {
-  const _LogRow({
-    required this.position,
+  final ExecutionState state;
+
+  @override
+  State<_PlanList> createState() => _PlanListState();
+}
+
+class _PlanListState extends State<_PlanList> {
+  final _controller = ScrollController();
+
+  /// Fixed, so the current row's offset is arithmetic, not a measurement.
+  static const double _rowExtent = 52;
+
+  /// Rows kept above the current one, so what was just done stays in sight.
+  static const int _lead = 2;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _reveal(animate: false),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_PlanList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state.currentIndex != widget.state.currentIndex) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
+    }
+  }
+
+  void _reveal({bool animate = true}) {
+    if (!mounted || !_controller.hasClients) return;
+    final target = ((widget.state.currentIndex - _lead) * _rowExtent).clamp(
+      0.0,
+      _controller.position.maxScrollExtent,
+    );
+    if (!animate || GimmyMotion.isReduced(context)) {
+      _controller.jumpTo(target);
+      return;
+    }
+    _controller.animateTo(
+      target,
+      duration: GimmyMotion.stateChange,
+      curve: GimmyMotion.enter,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    final steps = state.plan.steps;
+
+    return ListView.builder(
+      controller: _controller,
+      padding: const EdgeInsets.symmetric(vertical: GimmySpacing.lg),
+      itemExtent: _rowExtent,
+      itemCount: steps.length,
+      itemBuilder: (context, i) => _PlanRow(
+        number: i + 1,
+        step: steps[i],
+        outcome: i < state.pastOutcomes.length ? state.pastOutcomes[i] : null,
+        isCurrent: i == state.currentIndex,
+      ),
+    );
+  }
+}
+
+class _PlanRow extends StatelessWidget {
+  const _PlanRow({
+    required this.number,
     required this.step,
-    required this.phase,
-    required this.isLive,
+    required this.outcome,
+    required this.isCurrent,
   });
 
-  final int position;
+  final int number;
   final PlanStep step;
-  final _Phase phase;
-  final bool isLive;
+
+  /// Null for the current step and everything queued after it.
+  final StepOutcome? outcome;
+  final bool isCurrent;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tokens = GimmyTokens.of(context);
-    final isCurrent = phase == _Phase.current;
-    final muted = phase == _Phase.queued;
-    final accent = theme.colorScheme.primary;
+    // Behind the user recedes; the current step leads; what is next is plain.
+    final ink = isCurrent
+        ? theme.colorScheme.primary
+        : outcome != null
+        ? theme.colorScheme.onSurfaceVariant
+        : theme.colorScheme.onSurface;
 
-    return Container(
-      margin: const EdgeInsets.only(top: GimmySpacing.xs),
-      padding: const EdgeInsets.symmetric(
-        horizontal: GimmySpacing.sm,
-        vertical: GimmySpacing.sm,
+    final mark = switch (outcome) {
+      StepOutcome.done => Icon(
+        Icons.check,
+        size: 18,
+        color: tokens.intensityActive,
       ),
-      decoration: BoxDecoration(
-        color: isCurrent ? theme.colorScheme.surfaceContainerHigh : null,
-        borderRadius: GimmyRadii.cell,
+      StepOutcome.skipped => Icon(
+        Icons.redo,
+        size: 18,
+        color: theme.colorScheme.onSurfaceVariant,
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: switch (phase) {
-                _Phase.done => theme.colorScheme.primaryContainer,
-                _Phase.current => accent.withValues(alpha: 0.2),
-                _Phase.queued => theme.colorScheme.surfaceContainerHighest,
-              },
+      null => Text('$number', style: tokens.labelMono.copyWith(color: ink)),
+    };
+
+    final state = switch (outcome) {
+      StepOutcome.done => 'done',
+      StepOutcome.skipped => 'skipped',
+      null => isCurrent ? 'current' : 'next',
+    };
+
+    return Semantics(
+      label: 'Step $number, ${step.name}, ${stepTarget(step)}, $state',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: GimmySpacing.ms),
+        decoration: BoxDecoration(
+          color: isCurrent ? theme.colorScheme.surfaceContainerHigh : null,
+          borderRadius: GimmyRadii.cell,
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: GimmySpacing.lg,
+              child: Center(child: mark),
             ),
-            child: phase == _Phase.done
-                ? Icon(
-                    Icons.check,
-                    size: 14,
-                    color: theme.colorScheme.onPrimaryContainer,
-                  )
-                : Text(
-                    '$position',
-                    style: tokens.labelMono.copyWith(
-                      color: isCurrent
-                          ? accent
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-          ),
-          const SizedBox(width: GimmySpacing.sm + 4),
-          Expanded(
-            child: Text(
-              step.name,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: isCurrent
-                    ? accent
-                    : muted
-                    ? theme.colorScheme.onSurfaceVariant
-                    : theme.colorScheme.onSurface,
+            const SizedBox(width: GimmySpacing.ms),
+            Expanded(
+              child: Text(
+                step.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyLarge?.copyWith(color: ink),
               ),
             ),
-          ),
-          Text(
-            stepTarget(step),
-            style: tokens.metricMd.copyWith(
-              color: muted
-                  ? theme.colorScheme.onSurfaceVariant
-                  : theme.colorScheme.onSurface,
+            const SizedBox(width: GimmySpacing.sm),
+            Text(
+              stepTarget(step),
+              style: tokens.labelMono.copyWith(color: ink),
             ),
-          ),
-          const SizedBox(width: GimmySpacing.md),
-          SizedBox(
-            width: 88,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: switch (phase) {
-                _Phase.done => const GimmyBadge(label: 'Done'),
-                _Phase.current => GimmyBadge(label: isLive ? 'Live' : 'Now'),
-                _Phase.queued => GimmyBadge(
-                  label: 'Queued',
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              },
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

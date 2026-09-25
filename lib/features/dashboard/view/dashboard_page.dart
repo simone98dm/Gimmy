@@ -9,6 +9,7 @@ import '../../../core/widgets/start_workout_banner.dart';
 import '../../../data/training_stats.dart';
 import '../widgets/dashboard_hero.dart';
 import '../widgets/dashboard_stats.dart';
+import '../../history/view/session_detail_page.dart';
 import '../widgets/day_sessions_sheet.dart';
 import '../widgets/recent_logs.dart';
 import '../widgets/session_calendar.dart';
@@ -47,19 +48,20 @@ class DashboardPage extends StatelessWidget {
     final calendar = SessionCalendar(
       sessions: sessions,
       today: now,
-      onDaySelected: (day, sessions) =>
-          showDaySessionsSheet(context, day: day, sessions: sessions),
+      onDaySelected: (day, daySessions) => showDaySessionsSheet(
+        context,
+        day: day,
+        sessions: daySessions,
+        history: sessions,
+      ),
     );
     final logs = RecentLogs(
       sessions: sessions,
       now: now,
-      onSelected: (session) => showDaySessionsSheet(
-        context,
-        day: session.localDay,
-        sessions: sessions
-            .where((s) => s.localDay == session.localDay)
-            .toList(),
-      ),
+      // One session in mind: straight to it, no day sheet in between.
+      onSelected: (session) =>
+          Navigator.of(context)
+              .push(SessionDetailPage.route(session, history: sessions)),
     );
 
     if (isDesktopLayout(context)) {

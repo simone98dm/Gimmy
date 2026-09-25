@@ -18,7 +18,7 @@ class LegalPage extends StatelessWidget {
   );
 
   /// Bump whenever the text below changes.
-  static const lastRevised = '23 September 2026';
+  static const lastRevised = '25 September 2026';
 
   static const _sections = [
     (
@@ -50,8 +50,13 @@ class LegalPage extends StatelessWidget {
       paragraphs: [
         'Everything Gimmy stores — your plan, your sessions, your settings '
             'and the id of a paired heart-rate sensor — stays on this device. '
-            'There is no account, no analytics and no server; the app makes '
-            'no network requests while it runs.',
+            'There is no account, no analytics and no server.',
+        'The one thing Gimmy downloads is exercise demos: when you save a '
+            'plan, the demo of each exercise is fetched from GitHub and kept '
+            'on the device, so workouts run offline (on the web, a demo is '
+            'loaded when it is shown). These requests name the demo files and '
+            'nothing else; like any web request, they reveal your IP address '
+            'to GitHub.',
         'Bluetooth is used only to read heart rate from the sensor you pair. '
             '"Wipe profile" in Settings deletes everything, and so does '
             'uninstalling the app.',
@@ -88,6 +93,10 @@ class LegalPage extends StatelessWidget {
             'the About page.',
         'Bluetooth support comes from flutter_blue_plus, which is free for '
             'personal use only.',
+        'Exercise names come from the exercises-dataset by Hasan Emir '
+            'Yıldırım, under the MIT License. The exercise demos are '
+            '${AppConfig.exerciseMediaCredit}; they are not covered by '
+            'Gimmy\'s licence or the dataset\'s.',
       ],
     ),
     (

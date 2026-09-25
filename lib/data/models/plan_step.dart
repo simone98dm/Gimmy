@@ -45,6 +45,7 @@ class PlanStep extends Equatable {
     this.durationSeconds,
     this.repCount,
     this.notes,
+    this.exerciseId,
   });
 
   /// Builds a timer step, validating that it has a usable duration.
@@ -120,6 +121,11 @@ class PlanStep extends Equatable {
   /// Free-text coaching notes from the FIT file. Often long, often not English.
   final String? notes;
 
+  /// The catalog exercise whose demo the runner shows, chosen on import.
+  /// Null when nothing matched, the user picked "no demo", or the plan was
+  /// saved before demos existed. See `ExerciseCatalog`.
+  final String? exerciseId;
+
   bool get isTimer => type == StepType.timer;
   bool get isReps => type == StepType.reps;
   bool get isOpen => type == StepType.open;
@@ -146,6 +152,7 @@ class PlanStep extends Equatable {
     if (durationSeconds != null) 'durationSeconds': durationSeconds,
     if (repCount != null) 'repCount': repCount,
     if (notes != null) 'notes': notes,
+    if (exerciseId != null) 'exerciseId': exerciseId,
   };
 
   factory PlanStep.fromJson(Map<String, dynamic> json) {
@@ -154,7 +161,7 @@ class PlanStep extends Equatable {
     final intensity = StepIntensity.fromName(json['intensity'] as String);
     final notes = json['notes'] as String?;
 
-    return switch (type) {
+    final step = switch (type) {
       StepType.timer => PlanStep.timer(
         name: name,
         intensity: intensity,
@@ -173,6 +180,11 @@ class PlanStep extends Equatable {
         notes: notes,
       ),
     };
+
+    // Optional: plans saved before demos have no id, and a malformed one
+    // costs only the demo, never the plan.
+    final exerciseId = json['exerciseId'];
+    return exerciseId is String ? step.copyWith(exerciseId: exerciseId) : step;
   }
 
   PlanStep copyWith({
@@ -181,6 +193,8 @@ class PlanStep extends Equatable {
     int? durationSeconds,
     int? repCount,
     String? notes,
+    String? exerciseId,
+    bool clearExerciseId = false,
   }) {
     return PlanStep(
       name: name ?? this.name,
@@ -189,6 +203,7 @@ class PlanStep extends Equatable {
       durationSeconds: durationSeconds ?? this.durationSeconds,
       repCount: repCount ?? this.repCount,
       notes: notes ?? this.notes,
+      exerciseId: clearExerciseId ? null : exerciseId ?? this.exerciseId,
     );
   }
 
@@ -200,5 +215,6 @@ class PlanStep extends Equatable {
     durationSeconds,
     repCount,
     notes,
+    exerciseId,
   ];
 }

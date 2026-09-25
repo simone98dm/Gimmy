@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/gimmy_tokens.dart';
+import '../../history/session_outcome.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/util/duration_format.dart';
 import '../../../core/util/relative_day.dart';
@@ -103,11 +104,9 @@ class _LogRow extends StatelessWidget {
     final theme = Theme.of(context);
     final tokens = GimmyTokens.of(context);
 
-    final (statusLabel, statusColor) = switch (session.status) {
-      SessionStatus.completed => ('DONE', tokens.intensityActive),
-      SessionStatus.abandoned => ('PARTIAL', tokens.intensityRest),
-      null => ('RUNNING', theme.colorScheme.onSurfaceVariant),
-    };
+    final outcome = sessionOutcome(context, session.status);
+    final statusLabel = outcome.label.toUpperCase();
+    final statusColor = outcome.color;
 
     return Semantics(
       button: true,
@@ -122,7 +121,7 @@ class _LogRow extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(GimmySpacing.sm + 6),
+            padding: const EdgeInsets.all(GimmySpacing.ms),
             child: Row(
               children: [
                 Container(
@@ -139,7 +138,7 @@ class _LogRow extends StatelessWidget {
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                const SizedBox(width: GimmySpacing.sm + 4),
+                const SizedBox(width: GimmySpacing.ms),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,11 +204,9 @@ class _LogCard extends StatelessWidget {
     final theme = Theme.of(context);
     final tokens = GimmyTokens.of(context);
 
-    final (statusLabel, statusColor) = switch (session.status) {
-      SessionStatus.completed => ('Completed', tokens.intensityActive),
-      SessionStatus.abandoned => ('Partial', tokens.intensityRest),
-      null => ('Running', theme.colorScheme.onSurfaceVariant),
-    };
+    final outcome = sessionOutcome(context, session.status);
+    final statusLabel = outcome.label;
+    final statusColor = outcome.color;
     // Seconds under a minute, as everywhere else — "0 min" read as nothing.
     final seconds = session.totalActiveSeconds;
     final (timeValue, timeUnit) = seconds < 60
@@ -258,9 +255,7 @@ class _LogCard extends StatelessWidget {
               ),
               const SizedBox(height: GimmySpacing.md),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: GimmySpacing.sm + 4,
-                ),
+                padding: const EdgeInsets.symmetric(vertical: GimmySpacing.ms),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerLowest,
                   borderRadius: GimmyRadii.button,
@@ -282,7 +277,7 @@ class _LogCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: GimmySpacing.sm + 4),
+              const SizedBox(height: GimmySpacing.ms),
               Row(
                 children: [
                   Expanded(

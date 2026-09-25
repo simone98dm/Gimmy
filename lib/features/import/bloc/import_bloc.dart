@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../data/exercises/exercise_demos.dart';
 import '../../../data/fit/fit_file_picker.dart';
 import '../../../data/fit/fit_parse_exception.dart';
 import '../../../data/fit/fit_workout_parser.dart';
 import '../../../data/models/plan.dart';
+import '../../../data/sample_plan.dart';
 import '../../../data/storage/plan_repository.dart';
 import '../../../data/storage/settings_repository.dart';
 import '../../../core/logging/app_log.dart';
@@ -21,13 +25,17 @@ class ImportBloc extends Bloc<ImportEvent, ImportState> {
     required FitFilePicker pickFile,
     required PlanRepository planRepository,
     required SettingsRepository settingsRepository,
+    required ExerciseDemos demos,
     DateTime Function() now = DateTime.now,
   }) : _pickFile = pickFile,
        _planRepository = planRepository,
        _settingsRepository = settingsRepository,
+       _demos = demos,
        _now = now,
        super(const ImportState()) {
     on<ImportFileRequested>(_onFileRequested);
+    on<ImportSampleRequested>(_onSampleRequested);
+    on<ImportExerciseChanged>(_onExerciseChanged);
     on<ImportConfirmed>(_onConfirmed);
     on<ImportReset>(_onReset);
   }
@@ -35,6 +43,7 @@ class ImportBloc extends Bloc<ImportEvent, ImportState> {
   final FitFilePicker _pickFile;
   final PlanRepository _planRepository;
   final SettingsRepository _settingsRepository;
+  final ExerciseDemos _demos;
   final DateTime Function() _now;
 
   Future<void> _onFileRequested(
@@ -76,7 +85,7 @@ class ImportBloc extends Bloc<ImportEvent, ImportState> {
       emit(
         ImportState(
           status: ImportStatus.preview,
-          plan: plan,
+          plan: await _demos.match(plan),
           filename: picked.name,
         ),
       );
@@ -104,6 +113,41 @@ class ImportBloc extends Bloc<ImportEvent, ImportState> {
     }
   }
 
+  /// Same preview as a picked file, so the sample is saved through exactly
+  /// the confirm path a real import takes.
+  Future<void> _onSampleRequested(
+    ImportSampleRequested event,
+    Emitter<ImportState> emit,
+  ) async {
+    // Matching reads the catalog, so the sample is not instant either.
+    emit(const ImportState(status: ImportStatus.parsing));
+    final plan = buildSamplePlan(id: _newPlanId(), importedAt: _now());
+    AppLog.info('import', 'previewing the built-in sample');
+    emit(
+      ImportState(
+        status: ImportStatus.preview,
+        plan: await _demos.match(plan),
+        filename: plan.sourceFilename,
+      ),
+    );
+  }
+
+  void _onExerciseChanged(
+    ImportExerciseChanged event,
+    Emitter<ImportState> emit,
+  ) {
+    final plan = state.plan;
+    if (plan == null || state.status != ImportStatus.preview) return;
+
+    emit(
+      ImportState(
+        status: ImportStatus.preview,
+        plan: plan.withExercise(event.name, event.exerciseId),
+        filename: state.filename,
+      ),
+    );
+  }
+
   Future<void> _onConfirmed(
     ImportConfirmed event,
     Emitter<ImportState> emit,
@@ -126,6 +170,10 @@ class ImportBloc extends Bloc<ImportEvent, ImportState> {
       await _settingsRepository.save(settings.copyWith(activePlanId: plan.id));
 
       AppLog.info('import', 'saved "${plan.name}" as the active plan');
+
+      // Not awaited: on a slow network this could take minutes, and the plan
+      // works without it. A demo that lands late shows from then on.
+      unawaited(_demos.prefetch(plan));
       emit(
         ImportState(
           status: ImportStatus.saved,

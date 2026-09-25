@@ -12,6 +12,23 @@ class ImportFileRequested extends ImportEvent {
   const ImportFileRequested();
 }
 
+/// The user has no file yet and tapped "Try a sample workout".
+class ImportSampleRequested extends ImportEvent {
+  const ImportSampleRequested();
+}
+
+/// The user picked another demo for the exercise [name] in the preview, or
+/// "No demo" when [exerciseId] is null.
+class ImportExerciseChanged extends ImportEvent {
+  const ImportExerciseChanged({required this.name, required this.exerciseId});
+
+  final String name;
+  final String? exerciseId;
+
+  @override
+  List<Object?> get props => [name, exerciseId];
+}
+
 /// The user tapped "Confirm & Save Plan" on a previewed plan.
 class ImportConfirmed extends ImportEvent {
   const ImportConfirmed();

@@ -25,7 +25,7 @@ class DashboardStatusStrip extends StatelessWidget {
     final tokens = GimmyTokens.of(context);
     final muted = tokens.labelMono.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
-      letterSpacing: 1,
+      letterSpacing: GimmyType.capsTracking,
     );
 
     return Container(
@@ -180,7 +180,7 @@ class _StatCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: tokens.labelMono.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
-                    letterSpacing: 1.2,
+                    letterSpacing: GimmyType.capsTracking,
                   ),
                 ),
               ),

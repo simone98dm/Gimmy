@@ -103,7 +103,7 @@ class _StepsLabel extends StatelessWidget {
       '$count STEPS',
       style: GimmyTokens.of(context).labelMono.copyWith(
         color: theme.colorScheme.onSurfaceVariant,
-        letterSpacing: 1.2,
+        letterSpacing: GimmyType.capsTracking,
       ),
     );
   }

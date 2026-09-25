@@ -1,12 +1,16 @@
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/gimmy_tokens.dart';
+import '../../../core/theme/motion.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/util/duration_format.dart';
 import '../../../core/widgets/gimmy_cta.dart';
+import '../../../data/session_comparison.dart';
+import '../../history/widgets/comparison_line.dart';
 import '../bloc/execution_bloc.dart';
 
 /// The completion modal, over a blurred and dimmed workout.
@@ -18,24 +22,57 @@ class CompletionSummary extends StatelessWidget {
     super.key,
     required this.state,
     required this.onDone,
+    this.comparison,
   });
 
   final ExecutionState state;
   final VoidCallback onDone;
 
+  /// Against the last run of this plan; null when there is none.
+  final SessionComparison? comparison;
+
+  static const double _blurSigma = 6;
+  static const double _enterScale = 0.96;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final card = _SummaryCard(
+      state: state,
+      onDone: onDone,
+      comparison: comparison,
+    );
 
-    return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-      child: ColoredBox(
-        color: theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.8),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(GimmySpacing.gutter),
-              child: _SummaryCard(state: state, onDone: onDone),
+    // The end of the workout is the peak of the session, so it arrives rather
+    // than snaps: the workout behind pulls out of focus as the card settles.
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: GimmyMotion.isReduced(context)
+          ? Duration.zero
+          : GimmyMotion.pageTransition,
+      curve: GimmyMotion.enter,
+      child: card,
+      builder: (context, t, card) => BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: _blurSigma * t,
+          sigmaY: _blurSigma * t,
+        ),
+        child: ColoredBox(
+          color: theme.colorScheme.surfaceContainerLowest.withValues(
+            alpha: 0.8 * t,
+          ),
+          child: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(GimmySpacing.gutter),
+                child: FadeTransition(
+                  opacity: AlwaysStoppedAnimation(t),
+                  child: Transform.scale(
+                    scale: _enterScale + (1 - _enterScale) * t,
+                    child: card,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -70,10 +107,15 @@ enum _Outcome {
 }
 
 class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.state, required this.onDone});
+  const _SummaryCard({
+    required this.state,
+    required this.onDone,
+    required this.comparison,
+  });
 
   final ExecutionState state;
   final VoidCallback onDone;
+  final SessionComparison? comparison;
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +144,8 @@ class _SummaryCard extends StatelessWidget {
             switch (outcome) {
               _Outcome.strong => 'Workout done',
               _Outcome.partial => 'Session logged',
-              _Outcome.empty => 'Nothing recorded',
+              // The session is saved and the day counts, so not "nothing".
+              _Outcome.empty => 'No steps done',
             },
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineMedium,
@@ -144,12 +187,28 @@ class _SummaryCard extends StatelessWidget {
               ],
             ],
           ),
+          if (comparison case final comparison?) ...[
+            const SizedBox(height: GimmySpacing.sm),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ComparisonLine(comparison: comparison),
+            ),
+          ],
           const SizedBox(height: GimmySpacing.md),
           GimmyCta(
-            label: 'Return to Dashboard',
+            label: 'Back to Today',
             icon: Icons.arrow_forward,
             onPressed: onDone,
           ),
+          // Quiet, under the way forward: for the Done that was a mis-tap.
+          if (state.canUndo) ...[
+            const SizedBox(height: GimmySpacing.xs),
+            TextButton(
+              onPressed: () =>
+                  context.read<ExecutionBloc>().add(const ExecutionUndone()),
+              child: const Text('Undo last step'),
+            ),
+          ],
         ],
       ),
     );
@@ -217,7 +276,7 @@ class _MetricTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(GimmySpacing.sm),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
+        color: tokens.insetSurface,
         borderRadius: GimmyRadii.cell,
       ),
       child: Column(
@@ -229,7 +288,7 @@ class _MetricTile extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: GimmySpacing.xxs),
           Text(value, style: tokens.metricMd),
           Text(
             footnote,

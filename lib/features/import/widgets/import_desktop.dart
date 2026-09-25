@@ -82,7 +82,7 @@ class ParsedFileCard extends StatelessWidget {
                   color: theme.colorScheme.primary,
                 ),
               ),
-              const SizedBox(width: GimmySpacing.sm + 4),
+              const SizedBox(width: GimmySpacing.ms),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

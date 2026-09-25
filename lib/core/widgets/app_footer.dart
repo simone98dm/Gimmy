@@ -137,11 +137,18 @@ class _FooterTab extends StatelessWidget {
                 children: [
                   Icon(tab.icon, size: 24, color: color),
                   const SizedBox(height: GimmySpacing.xs),
-                  Text(
-                    tab.label.toUpperCase(),
-                    maxLines: 1,
-                    softWrap: false,
-                    style: theme.textTheme.labelMedium?.copyWith(color: color),
+                  // Shrinks rather than overflows at large text sizes: the
+                  // bar's height is fixed so content can pad for it.
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      tab.label.toUpperCase(),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: color,
+                      ),
+                    ),
                   ),
                 ],
               ),

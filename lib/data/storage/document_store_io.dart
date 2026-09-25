@@ -57,8 +57,20 @@ class FileDocumentStore implements DocumentStore {
     }
   }
 
+  /// The write in flight. Bloc handlers run concurrently, so two saves can
+  /// overlap (a quick double skip); both would stage into the same `.tmp`
+  /// and the second rename would find it already moved. Writes queue instead.
+  Future<void> _lastWrite = Future.value();
+
   @override
-  Future<void> write(Object? document) async {
+  Future<void> write(Object? document) {
+    // A failed write is reported to its own caller; it must not block the next.
+    final next = _lastWrite.catchError((_) {}).then((_) => _write(document));
+    _lastWrite = next;
+    return next;
+  }
+
+  Future<void> _write(Object? document) async {
     final file = await _file();
     await file.parent.create(recursive: true);
 

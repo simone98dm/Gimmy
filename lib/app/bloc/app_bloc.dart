@@ -10,6 +10,7 @@ import '../../data/storage/session_repository.dart';
 import '../../data/storage/settings_repository.dart';
 import '../../data/streak_calculator.dart';
 import '../../core/logging/app_log.dart';
+import '../../core/theme/gimmy_theme_id.dart';
 
 part 'app_event.dart';
 part 'app_state.dart';
@@ -27,6 +28,7 @@ class AppBloc extends Bloc<AppEvent, AppState> {
        super(const AppState()) {
     on<AppStarted>(_onStarted);
     on<AppThemeModeChanged>(_onThemeModeChanged);
+    on<AppThemeChanged>(_onThemeChanged);
     on<AppCuesToggled>(
       (event, emit) => _saveSettings(
         state.settings.copyWith(areCuesEnabled: event.isEnabled),
@@ -83,6 +85,15 @@ class AppBloc extends Bloc<AppEvent, AppState> {
       state.settings.copyWith(themeMode: event.themeMode),
       emit,
     );
+  }
+
+  Future<void> _onThemeChanged(
+    AppThemeChanged event,
+    Emitter<AppState> emit,
+  ) async {
+    // Emit first: the theme should switch under the user's finger, not after
+    // a disk write.
+    await _saveSettings(state.settings.copyWith(themeId: event.themeId), emit);
   }
 
   Future<void> _saveSettings(

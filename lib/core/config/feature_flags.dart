@@ -30,6 +30,11 @@ abstract final class AppConfig {
   /// Seconds subtracted by the −10s control on a running timer step.
   static const int timerAdjustmentSeconds = 10;
 
+  /// A Done or Skip this soon after the previous one is taken as the second
+  /// half of a double tap, and ignored: the user cannot have seen the step it
+  /// would act on.
+  static const Duration advanceGuard = Duration(milliseconds: 500);
+
   /// How long one repetition is assumed to take, used **only** to estimate a
   /// plan's total duration in the import preview.
   ///
@@ -54,4 +59,19 @@ abstract final class AppConfig {
   /// into an unbounded plan. The sample expands to 54 steps; this is far above
   /// any real workout while still bounding the work.
   static const int maxExpandedSteps = 2000;
+
+  /// Where exercise demos are downloaded from, on import. Pinned to the
+  /// dataset commit the bundled catalog was built from, so a later change
+  /// upstream cannot move a demo out from under its id. Only this changes
+  /// if the media moves to self-hosting.
+  static const String exerciseMediaBaseUrl =
+      'https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/'
+      '7455efae41b330c265e7cd4b78dfa848e7ce5ebd';
+
+  /// Required wherever a demo is shown: the media is © Gym visual.
+  static const String exerciseMediaCredit =
+      '© Gym visual — https://gymvisual.com/';
+
+  /// A demo download slower than this is given up; the step keeps its dial.
+  static const Duration exerciseMediaTimeout = Duration(seconds: 20);
 }

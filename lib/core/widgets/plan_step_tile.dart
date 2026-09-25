@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../data/models/plan_step.dart';
 import '../theme/gimmy_tokens.dart';
 import '../theme/tokens.dart';
-import '../util/duration_format.dart';
+import '../util/step_target.dart';
+
+export '../util/step_target.dart';
 
 /// Maps a step's intensity to its design-system color.
 Color intensityColor(BuildContext context, StepIntensity intensity) {
@@ -14,15 +16,6 @@ Color intensityColor(BuildContext context, StepIntensity intensity) {
     StepIntensity.warmup || StepIntensity.cooldown => tokens.intensityEasy,
   };
 }
-
-/// The human-readable target of a step: a duration, a rep count, or nothing.
-String stepTarget(PlanStep step) => switch (step.type) {
-  StepType.timer => DurationFormat.clock(
-    Duration(seconds: step.durationSeconds!),
-  ),
-  StepType.reps => '${step.repCount} reps',
-  StepType.open => 'Open',
-};
 
 /// One row of a plan's step list.
 ///
@@ -71,7 +64,7 @@ class PlanStepTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(step.name, style: theme.textTheme.bodyLarge),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: GimmySpacing.xxs),
                   Text(
                     step.intensity.name.toUpperCase(),
                     style: tokens.labelMono.copyWith(color: accent),

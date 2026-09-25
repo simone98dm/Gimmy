@@ -21,7 +21,7 @@ class GimmyBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: GimmySpacing.sm,
-        vertical: 3,
+        vertical: GimmySpacing.xxs,
       ),
       decoration: BoxDecoration(
         color: tone.withValues(alpha: 0.12),
@@ -41,7 +41,7 @@ class GimmyBadge extends StatelessWidget {
               style: GimmyTokens.of(context).labelMono.copyWith(
                 color: tone,
                 fontWeight: FontWeight.w600,
-                letterSpacing: 1,
+                letterSpacing: GimmyType.capsTracking,
               ),
             ),
           ),

@@ -17,12 +17,17 @@ class ExecutionControls extends StatelessWidget {
     required this.onAdjust,
     required this.onPrimary,
     required this.onSkip,
+    this.showKeyHints = false,
   });
 
   final ExecutionState state;
   final VoidCallback onAdjust;
   final VoidCallback onPrimary;
   final VoidCallback onSkip;
+
+  /// Keycaps under each control, and the key in its spoken label. Desktop
+  /// only: the keyboard shortcuts live in `RunnerKeyboard`.
+  final bool showKeyHints;
 
   @override
   Widget build(BuildContext context) {
@@ -33,26 +38,89 @@ class ExecutionControls extends StatelessWidget {
       PrimaryAction.next => (Icons.check, 'Done'),
     };
 
+    String spoken(String label, String key) =>
+        showKeyHints ? '$label, $key' : label;
+    Widget hinted(Widget control, String key) => showKeyHints
+        ? Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              control,
+              const SizedBox(height: GimmySpacing.sm),
+              _KeyCap(key),
+            ],
+          )
+        : control;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SecondaryControl(
-          // Text, not replay_10: that icon means rewind, and this takes time
-          // off the countdown.
-          text: '−${AppConfig.timerAdjustmentSeconds}',
-          label: 'Subtract ${AppConfig.timerAdjustmentSeconds} seconds',
-          // Timer steps only, as specified.
-          onPressed: state.canAdjustTimer ? onAdjust : null,
+        hinted(
+          _SecondaryControl(
+            // Text, not replay_10: that icon means rewind, and this takes time
+            // off the countdown.
+            text: '−${AppConfig.timerAdjustmentSeconds}',
+            label: spoken(
+              'Subtract ${AppConfig.timerAdjustmentSeconds} seconds',
+              'minus',
+            ),
+            // Timer steps only, as specified.
+            onPressed: state.canAdjustTimer ? onAdjust : null,
+          ),
+          '−',
         ),
         const SizedBox(width: GimmySpacing.lg),
-        _PrimaryControl(icon: icon, label: label, onPressed: onPrimary),
+        hinted(
+          _PrimaryControl(
+            icon: icon,
+            label: spoken(label, 'Space'),
+            onPressed: onPrimary,
+          ),
+          // Says what Space does right now.
+          'Space · $label',
+        ),
         const SizedBox(width: GimmySpacing.lg),
-        _SecondaryControl(
-          icon: Icons.skip_next,
-          label: 'Skip this step',
-          onPressed: onSkip,
+        hinted(
+          _SecondaryControl(
+            icon: Icons.skip_next,
+            label: spoken('Skip this step', 'S'),
+            onPressed: onSkip,
+          ),
+          'S',
         ),
       ],
+    );
+  }
+}
+
+/// A key, drawn as a small keycap.
+class _KeyCap extends StatelessWidget {
+  const _KeyCap(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tokens = GimmyTokens.of(context);
+
+    return ExcludeSemantics(
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: GimmySpacing.xs,
+          vertical: GimmySpacing.xxs,
+        ),
+        decoration: BoxDecoration(
+          border: Border.all(color: tokens.cardBorder),
+          borderRadius: BorderRadius.circular(GimmyRadii.sm),
+        ),
+        child: Text(
+          text,
+          style: tokens.labelMono.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -149,40 +217,13 @@ class _SecondaryControl extends StatelessWidget {
                     ? Icon(icon, size: 24, color: color)
                     : Text(
                         text!,
-                        style: tokens.metricMd.copyWith(
-                          color: color,
-                          fontSize: 16,
-                        ),
+                        style: tokens.metricMd.copyWith(color: color),
                       ),
               ),
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Ends the workout early, through the same confirmation as the back button.
-///
-/// "End", not "Finish": the session is recorded as abandoned, and "Finish"
-/// reads as the happy ending.
-class EndWorkoutButton extends StatelessWidget {
-  const EndWorkoutButton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return TextButton.icon(
-      onPressed: () => Navigator.of(context).maybePop(),
-      style: TextButton.styleFrom(
-        foregroundColor: theme.colorScheme.onSurfaceVariant,
-        minimumSize: const Size(GimmyLayout.minTapTarget, 48),
-        tapTargetSize: MaterialTapTargetSize.padded,
-      ),
-      icon: const Icon(Icons.stop, size: 18),
-      label: const Text('End'),
     );
   }
 }

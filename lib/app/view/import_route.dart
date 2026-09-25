@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/widgets/app_sidebar.dart';
 import '../../core/widgets/gimmy_page_route.dart';
 import '../../core/widgets/gimmy_scaffold.dart';
+import '../../data/exercises/exercise_demos.dart';
 import '../../data/fit/fit_file_picker.dart';
 import '../../data/storage/plan_repository.dart';
 import '../../data/storage/settings_repository.dart';
@@ -53,6 +54,7 @@ class ImportRoute extends StatelessWidget {
         pickFile: pickFile,
         planRepository: context.read<PlanRepository>(),
         settingsRepository: context.read<SettingsRepository>(),
+        demos: context.read<ExerciseDemos>(),
       ),
       child: PopScope(
         // On first launch there is no dashboard behind this page, so a swipe
@@ -71,7 +73,11 @@ class ImportRoute extends StatelessWidget {
           leading: canPop
               ? BackButton(onPressed: () => Navigator.of(context).pop(false))
               : null,
-          child: ImportPage(onImported: () => Navigator.of(context).pop(true)),
+          child: ImportPage(
+            onImported: () => Navigator.of(context).pop(true),
+            // Can't pop means there is no plan behind this page.
+            offerSample: !canPop,
+          ),
         ),
       ),
     );

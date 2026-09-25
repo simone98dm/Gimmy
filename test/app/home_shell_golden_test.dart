@@ -1,3 +1,7 @@
+// Every test here ends in a golden, which lives only on this machine.
+@Tags(['golden'])
+library;
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';

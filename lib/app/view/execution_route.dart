@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../features/heart_rate/bloc/heart_rate_bloc.dart';
+
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../bloc/app_bloc.dart';
@@ -42,6 +45,8 @@ class ExecutionRoute extends StatelessWidget {
         plan: plan,
         sessionRepository: context.read<SessionRepository>(),
         ticker: ticker,
+        // Read on each counted second; null whenever no sensor is reporting.
+        heartRate: () => context.read<HeartRateBloc>().state.bpm,
       )..add(const ExecutionStarted()),
       child: const _ExecutionHost(),
     );
@@ -122,6 +127,8 @@ class _ExecutionHostState extends State<_ExecutionHost> {
       },
       child: GimmyScaffold(
         label: 'Workout',
+        // The control bar meets the bottom edge; see PhoneRunner.
+        extendsToBottomEdge: true,
         // Inert: the way out of a workout is the back button and its
         // confirmation, not a sidebar click.
         sidebarItem: SidebarItem.active,
@@ -131,6 +138,7 @@ class _ExecutionHostState extends State<_ExecutionHost> {
           areCuesEnabled: context.select(
             (AppBloc bloc) => bloc.state.settings.areCuesEnabled,
           ),
+          history: context.select((AppBloc bloc) => bloc.state.sessions),
           // `pop`, not `maybePop`: the PopScope above would otherwise ask the
           // user to confirm leaving a workout they have already finished.
           onDone: () => Navigator.of(context).pop(),

@@ -10,10 +10,11 @@ import 'gimmy_logo.dart';
 /// Unlike the bottom nav, Import is listed: on a desktop there is room for it,
 /// and the Stitch desktop screens show it as a place of its own.
 enum SidebarItem {
-  dashboard(icon: Icons.grid_view, label: 'Today'),
+  // Same glyphs as the bottom nav: one destination, one icon.
+  dashboard(icon: Icons.speed, label: 'Today'),
   active(icon: Icons.fitness_center, label: 'Workout'),
   import(icon: Icons.download, label: 'Import plan'),
-  settings(icon: Icons.settings_outlined, label: 'Settings');
+  settings(icon: Icons.tune, label: 'Settings');
 
   const SidebarItem({required this.icon, required this.label});
 

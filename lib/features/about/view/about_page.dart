@@ -200,7 +200,7 @@ class _Modules extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: GimmySpacing.xxs),
             Text(
               module.body,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -250,7 +250,7 @@ class _AuthorCard extends StatelessWidget {
                   'MADE BY',
                   style: tokens.labelMono.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
-                    letterSpacing: 1.2,
+                    letterSpacing: GimmyType.capsTracking,
                   ),
                 ),
                 Text(

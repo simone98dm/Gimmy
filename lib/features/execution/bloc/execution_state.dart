@@ -11,6 +11,9 @@ enum ExecutionStatus {
   abandoned,
 }
 
+/// A move the user made by tapping, and so may want back.
+enum AdvanceKind { done, skipped }
+
 /// What the primary button does right now.
 enum PrimaryAction {
   /// Timer step, stopped or paused.
@@ -35,7 +38,8 @@ class ExecutionState extends Equatable {
     this.stepsCompleted = 0,
     this.stepsSkipped = 0,
     this.status = ExecutionStatus.running,
-    this.canUndoSkip = false,
+    this.lastAdvance,
+    this.pastOutcomes = const [],
   });
 
   final Plan plan;
@@ -61,8 +65,19 @@ class ExecutionState extends Equatable {
   final int stepsSkipped;
   final ExecutionStatus status;
 
-  /// True straight after a skip, until anything else moves the workout on.
-  final bool canUndoSkip;
+  /// How the user last moved the workout on, while that move can still be
+  /// taken back: set by Done or Skip, cleared by the next action. A timer
+  /// running out is not a tap, so it never sets this.
+  final AdvanceKind? lastAdvance;
+
+  bool get canUndo => lastAdvance != null;
+
+  /// Done or skipped, for each step behind [currentIndex], in order — what the
+  /// desktop plan list marks each row with.
+  final List<StepOutcome> pastOutcomes;
+
+  /// The step Undo would bring back.
+  PlanStep? get undoableStep => canUndo ? plan.steps[currentIndex - 1] : null;
 
   bool get isRunning => status == ExecutionStatus.running;
   bool get isFinished => !isRunning;
@@ -105,7 +120,9 @@ class ExecutionState extends Equatable {
     int? stepsCompleted,
     int? stepsSkipped,
     ExecutionStatus? status,
-    bool? canUndoSkip,
+    AdvanceKind? lastAdvance,
+    bool clearLastAdvance = false,
+    List<StepOutcome>? pastOutcomes,
   }) {
     return ExecutionState(
       plan: plan,
@@ -118,7 +135,8 @@ class ExecutionState extends Equatable {
       stepsCompleted: stepsCompleted ?? this.stepsCompleted,
       stepsSkipped: stepsSkipped ?? this.stepsSkipped,
       status: status ?? this.status,
-      canUndoSkip: canUndoSkip ?? this.canUndoSkip,
+      lastAdvance: clearLastAdvance ? null : lastAdvance ?? this.lastAdvance,
+      pastOutcomes: pastOutcomes ?? this.pastOutcomes,
     );
   }
 
@@ -134,6 +152,7 @@ class ExecutionState extends Equatable {
     stepsCompleted,
     stepsSkipped,
     status,
-    canUndoSkip,
+    lastAdvance,
+    pastOutcomes,
   ];
 }

@@ -17,6 +17,14 @@ abstract final class GimmyMotion {
   /// Switching between nav destinations.
   static const Duration tabChange = Duration(milliseconds: 220);
 
+  /// Content swapping in place: the step title when the workout moves on,
+  /// the completion summary arriving.
+  static const Duration stateChange = Duration(milliseconds: 200);
+
+  /// One half-cycle of the live indicator's breathing. The only motion that
+  /// repeats, so slow enough to sit in peripheral vision without nagging.
+  static const Duration pulse = Duration(milliseconds: 1200);
+
   /// Pushing or popping a page.
   static const Duration pageTransition = Duration(milliseconds: 260);
 

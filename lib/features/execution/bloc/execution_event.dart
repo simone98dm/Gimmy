@@ -23,9 +23,10 @@ class ExecutionSkipped extends ExecutionEvent {
   const ExecutionSkipped();
 }
 
-/// Puts back the step that was just skipped.
-class ExecutionSkipUndone extends ExecutionEvent {
-  const ExecutionSkipUndone();
+/// Puts back the step just marked done or skipped — even the last one, which
+/// reopens a finished workout.
+class ExecutionUndone extends ExecutionEvent {
+  const ExecutionUndone();
 }
 
 /// The −10s control.

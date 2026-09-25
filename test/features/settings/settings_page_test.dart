@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gimmy/app/bloc/app_bloc.dart';
 import 'package:gimmy/core/theme/app_theme.dart';
+import 'package:gimmy/core/theme/gimmy_theme_id.dart';
 import 'package:gimmy/data/storage/document_store_io.dart';
 import 'package:gimmy/data/storage/plan_repository.dart';
 import 'package:gimmy/data/storage/session_repository.dart';
@@ -12,9 +13,11 @@ import 'package:gimmy/data/storage/settings_repository.dart';
 import 'package:gimmy/features/about/view/about_page.dart';
 import 'package:gimmy/features/about/view/legal_page.dart';
 import 'package:gimmy/features/settings/view/settings_page.dart';
+import 'package:gimmy/features/settings/widgets/theme_picker_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/fake_heart_rate_monitor.dart';
+import '../../support/pump_until.dart';
 import '../../support/test_fonts.dart';
 
 void main() {
@@ -87,6 +90,36 @@ void main() {
     expect(bloc.state.settings.areCuesEnabled, isFalse);
     final saved = await tester.runAsync(settingsRepository.load);
     expect(saved!.areCuesEnabled, isFalse);
+  });
+
+  testWidgets('shows the current theme and lets the user change it', (
+    tester,
+  ) async {
+    final (bloc, settingsRepository) = await pumpSettings(tester);
+    expect(find.text('Hacker Green'), findsOneWidget);
+
+    // The bloc's save round-trips through real storage and the picker's
+    // choice has to travel bloc -> Provider -> rebuild, none of which
+    // completes under fake async; see CLAUDE.md on `runAsync`.
+    await tester.runAsync(() async {
+      final themeRow = find.text('Theme');
+      await tester.ensureVisible(themeRow);
+      await tester.tap(themeRow);
+      await pumpUntilFound(tester, find.byType(ThemePickerSheet));
+
+      // The sheet lists every theme, including the one already applied.
+      expect(find.text('Hacker Green'), findsNWidgets(2));
+      expect(find.text('Sophisticated Blue'), findsOneWidget);
+
+      await tester.tap(find.text('Sophisticated Blue'));
+      await pumpUntilGone(tester, find.byType(ThemePickerSheet));
+    });
+
+    // The sheet is gone and the row now shows the new choice.
+    expect(find.text('Sophisticated Blue'), findsOneWidget);
+    expect(bloc.state.settings.themeId, GimmyThemeId.sophisticatedBlue);
+    final saved = await tester.runAsync(settingsRepository.load);
+    expect(saved!.themeId, GimmyThemeId.sophisticatedBlue);
   });
 
   testWidgets('About opens from Settings and leads on to Legal', (

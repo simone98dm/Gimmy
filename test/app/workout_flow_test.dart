@@ -1,8 +1,12 @@
+import 'package:gimmy/data/exercises/exercise_demos.dart';
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gimmy/core/config/feature_flags.dart';
+import 'package:gimmy/core/widgets/gimmy_scaffold.dart';
 import 'package:gimmy/app/bloc/app_bloc.dart';
 import 'package:gimmy/app/view/home_shell.dart';
 import 'package:gimmy/core/theme/app_theme.dart';
@@ -15,6 +19,7 @@ import 'package:gimmy/data/storage/session_repository.dart';
 import 'package:gimmy/data/storage/settings_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_exercise_demos.dart';
 import '../support/pump_until.dart';
 import '../support/silent_cues.dart';
 import '../support/fake_heart_rate_monitor.dart';
@@ -72,6 +77,9 @@ void main() {
       await tester.pumpWidget(
         MultiRepositoryProvider(
           providers: [
+            RepositoryProvider(
+              create: (_) => ExerciseDemos(media: FakeExerciseMediaStore()),
+            ),
             RepositoryProvider.value(value: planRepository),
             RepositoryProvider.value(value: sessionRepository),
             RepositoryProvider(
@@ -98,12 +106,26 @@ void main() {
 
       // Into the runner, on the first step.
       await pumpUntilFound(tester, find.text('STEP 1 OF 3'));
+      // The runner's control bar meets the bottom edge of the screen.
+      expect(
+        tester
+            .widget<GimmyScaffold>(find.byType(GimmyScaffold).last)
+            .extendsToBottomEdge,
+        isTrue,
+      );
       expect(find.text('Squat'), findsOneWidget);
-      expect(find.text('Row'), findsOneWidget, reason: 'shown as next up');
+      expect(
+        find.textContaining('Next · Row'),
+        findsOneWidget,
+        reason: 'shown as next up in the control bar',
+      );
 
       // Reps and open steps advance on Next. The control is icon-only, so it
       // is addressed the way a screen reader would.
       for (var step = 0; step < 3; step++) {
+        // A set takes longer than the double-tap guard; without this wait the
+        // second Done would be (rightly) ignored as half of a double tap.
+        await Future<void>.delayed(AppConfig.advanceGuard);
         await tester.tap(find.bySemanticsLabel('Done'));
         await pumpUntil(
           tester,
@@ -118,12 +140,12 @@ void main() {
       expect(find.text('3/3'), findsOneWidget, reason: 'all steps completed');
       expect(find.text('None skipped'), findsOneWidget);
 
-      await tester.tap(find.text('Return to Dashboard'));
+      await tester.tap(find.text('Back to Today'));
       await pumpUntilGone(tester, find.text('Workout done'));
 
       // The Dashboard reloads from disk, so this has to be awaited inside
       // `runAsync` — outside it the read would never complete.
-      await pumpUntilFound(tester, find.text('1 DAY STREAK'));
+      await pumpUntilFound(tester, find.text('1-DAY STREAK'));
 
       stored = await sessionRepository.loadAll();
     });

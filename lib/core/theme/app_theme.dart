@@ -1,85 +1,26 @@
 import 'package:flutter/material.dart';
 
+import 'gimmy_colors.dart';
+import 'gimmy_theme_id.dart';
 import 'gimmy_tokens.dart';
 import 'tokens.dart';
 
-/// Assembles the Stitch design system into light and dark `ThemeData`.
+/// Assembles the Stitch design system into light and dark `ThemeData`, for
+/// whichever [GimmyThemeId] the user picked.
 ///
 /// Every widget in the app gets its colors and sizes from here, either through
 /// `Theme.of(context)` or `GimmyTokens.of(context)`.
 abstract final class AppTheme {
-  static ThemeData get dark => _build(_darkScheme, GimmyTokens.dark);
-  static ThemeData get light => _build(_lightScheme, GimmyTokens.light);
+  /// Hacker Green, the original single theme — kept for call sites that
+  /// haven't been threaded onto a [GimmyThemeId] yet (and for goldens, which
+  /// assert this exact output).
+  static ThemeData get dark => darkFor(GimmyThemeId.hackerGreen);
+  static ThemeData get light => lightFor(GimmyThemeId.hackerGreen);
 
-  static const _darkScheme = ColorScheme(
-    brightness: Brightness.dark,
-    primary: GimmyPalette.darkPrimary,
-    onPrimary: GimmyPalette.darkOnPrimary,
-    primaryContainer: GimmyPalette.darkPrimaryContainer,
-    onPrimaryContainer: GimmyPalette.darkOnPrimaryContainer,
-    inversePrimary: GimmyPalette.darkInversePrimary,
-    secondary: GimmyPalette.darkSecondary,
-    onSecondary: GimmyPalette.darkOnSecondary,
-    secondaryContainer: GimmyPalette.darkSecondaryContainer,
-    onSecondaryContainer: GimmyPalette.darkOnSecondaryContainer,
-    tertiary: GimmyPalette.darkTertiary,
-    onTertiary: GimmyPalette.darkOnTertiary,
-    tertiaryContainer: GimmyPalette.darkTertiaryContainer,
-    onTertiaryContainer: GimmyPalette.darkOnTertiaryContainer,
-    error: GimmyPalette.darkError,
-    onError: GimmyPalette.darkOnError,
-    errorContainer: GimmyPalette.darkErrorContainer,
-    onErrorContainer: GimmyPalette.darkOnErrorContainer,
-    surface: GimmyPalette.darkSurface,
-    onSurface: GimmyPalette.darkOnSurface,
-    surfaceDim: GimmyPalette.darkSurfaceDim,
-    surfaceBright: GimmyPalette.darkSurfaceBright,
-    surfaceContainerLowest: GimmyPalette.darkSurfaceContainerLowest,
-    surfaceContainerLow: GimmyPalette.darkSurfaceContainerLow,
-    surfaceContainer: GimmyPalette.darkSurfaceContainer,
-    surfaceContainerHigh: GimmyPalette.darkSurfaceContainerHigh,
-    surfaceContainerHighest: GimmyPalette.darkSurfaceContainerHighest,
-    onSurfaceVariant: GimmyPalette.darkOnSurfaceVariant,
-    outline: GimmyPalette.darkOutline,
-    outlineVariant: GimmyPalette.darkOutlineVariant,
-    inverseSurface: GimmyPalette.darkInverseSurface,
-    onInverseSurface: GimmyPalette.darkInverseOnSurface,
-  );
-
-  static const _lightScheme = ColorScheme(
-    brightness: Brightness.light,
-    primary: GimmyPalette.lightPrimary,
-    onPrimary: GimmyPalette.lightOnPrimary,
-    primaryContainer: GimmyPalette.lightPrimaryContainer,
-    onPrimaryContainer: GimmyPalette.lightOnPrimaryContainer,
-    inversePrimary: GimmyPalette.lightInversePrimary,
-    secondary: GimmyPalette.lightSecondary,
-    onSecondary: GimmyPalette.lightOnSecondary,
-    secondaryContainer: GimmyPalette.lightSecondaryContainer,
-    onSecondaryContainer: GimmyPalette.lightOnSecondaryContainer,
-    tertiary: GimmyPalette.lightTertiary,
-    onTertiary: GimmyPalette.lightOnTertiary,
-    tertiaryContainer: GimmyPalette.lightTertiaryContainer,
-    onTertiaryContainer: GimmyPalette.lightOnTertiaryContainer,
-    error: GimmyPalette.lightError,
-    onError: GimmyPalette.lightOnError,
-    errorContainer: GimmyPalette.lightErrorContainer,
-    onErrorContainer: GimmyPalette.lightOnErrorContainer,
-    surface: GimmyPalette.lightSurface,
-    onSurface: GimmyPalette.lightOnSurface,
-    surfaceDim: GimmyPalette.lightSurfaceDim,
-    surfaceBright: GimmyPalette.lightSurfaceBright,
-    surfaceContainerLowest: GimmyPalette.lightSurfaceContainerLowest,
-    surfaceContainerLow: GimmyPalette.lightSurfaceContainerLow,
-    surfaceContainer: GimmyPalette.lightSurfaceContainer,
-    surfaceContainerHigh: GimmyPalette.lightSurfaceContainerHigh,
-    surfaceContainerHighest: GimmyPalette.lightSurfaceContainerHighest,
-    onSurfaceVariant: GimmyPalette.lightOnSurfaceVariant,
-    outline: GimmyPalette.lightOutline,
-    outlineVariant: GimmyPalette.lightOutlineVariant,
-    inverseSurface: GimmyPalette.lightInverseSurface,
-    onInverseSurface: GimmyPalette.lightInverseOnSurface,
-  );
+  static ThemeData darkFor(GimmyThemeId id) =>
+      _build(gimmyColorsFor(id, Brightness.dark));
+  static ThemeData lightFor(GimmyThemeId id) =>
+      _build(gimmyColorsFor(id, Brightness.light));
 
   /// Inter, mapped onto the Material slots the app actually uses.
   /// The JetBrains Mono telemetry styles live in [GimmyTokens].
@@ -145,7 +86,9 @@ abstract final class AppTheme {
     ),
   );
 
-  static ThemeData _build(ColorScheme scheme, GimmyTokens tokens) {
+  static ThemeData _build(GimmyColors colors) {
+    final scheme = colors.scheme;
+    final tokens = GimmyTokens.from(colors, scheme.brightness);
     final textTheme = _textTheme.apply(
       bodyColor: scheme.onSurface,
       displayColor: scheme.onSurface,

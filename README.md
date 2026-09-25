@@ -7,8 +7,13 @@ time, and keeps a streak and a calendar of everything you have done.
 | --------------------------------------- | --------------------------------------------- | -------------------------------------- |
 | ![home page](docs/assets/home-page.png) | ![workout](docs/assets/workout-plan-page.png) | ![import](docs/assets/import-page.png) |
 
-Everything stays on the device. There is no backend, no account, and the app makes no network
-requests at all — the `.fit` file you pick is parsed locally and never leaves your phone.
+Everything stays on the device. There is no backend and no account — the `.fit` file you pick is
+parsed locally and never leaves your phone. The one network request is a download: when you save
+a plan, the demo of each exercise is fetched and kept, so workouts run offline.
+
+Exercise names come from [exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset)
+(MIT). The exercise demos are © [Gym visual](https://gymvisual.com/) and are not covered by
+this project's licence.
 
 |               |                                                                                            |
 | ------------- | ------------------------------------------------------------------------------------------ |

@@ -124,8 +124,13 @@ abstract final class GimmyPalette {
 
 /// 8px base grid, collapsing to 4px for badge padding and tabular cells.
 abstract final class GimmySpacing {
+  /// Hairline gap between a title and the line directly under it.
+  static const double xxs = 2;
   static const double xs = 4;
   static const double sm = 8;
+
+  /// Between [sm] and [md]: pill padding, the gap beside a leading icon tile.
+  static const double ms = 12;
   static const double md = 16;
   static const double lg = 24;
   static const double xl = 32;
@@ -173,6 +178,13 @@ abstract final class GimmyLayout {
 
   /// Prose pages (About, Legal) stop here: about 75 characters a line.
   static const double readingWidth = 680;
+}
+
+/// Type details that are not a size, so have no home in `TextTheme`.
+abstract final class GimmyType {
+  /// Tracking for every all-caps label, sans or mono: about 10% of a 12px cap.
+  /// One value, so caps read as one voice across the app.
+  static const double capsTracking = 1.2;
 }
 
 abstract final class GimmyFonts {

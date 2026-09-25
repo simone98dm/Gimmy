@@ -43,7 +43,7 @@ class StartWorkoutBanner extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(child: _PlanChip()),
+              Flexible(child: _PlanChip(isSample: plan.isSample)),
               const SizedBox(width: GimmySpacing.xs),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -75,6 +75,15 @@ class StartWorkoutBanner extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+          if (plan.isSample) ...[
+            const SizedBox(height: GimmySpacing.xs),
+            Text(
+              _sampleHint,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
           const SizedBox(height: GimmySpacing.md),
           Row(
             children: [
@@ -108,6 +117,8 @@ class StartWorkoutBanner extends StatelessWidget {
     );
   }
 
+  static const _sampleHint = 'Import your own plan from Settings.';
+
   static int _exerciseCount(Plan plan) => plan.exerciseNames.length;
 
   /// "Squat • Row left • Row right …", clipped to one line by the
@@ -124,6 +135,11 @@ class StartWorkoutBanner extends StatelessWidget {
 /// The prototype's category tag. Ours says what the card is, because a `.fit`
 /// workout carries no category we could print honestly.
 class _PlanChip extends StatelessWidget {
+  const _PlanChip({required this.isSample});
+
+  /// The built-in sample says so, rather than passing for an import.
+  final bool isSample;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -131,20 +147,22 @@ class _PlanChip extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: GimmySpacing.sm + 2,
-        vertical: 3,
+        horizontal: GimmySpacing.ms,
+        vertical: GimmySpacing.xxs,
       ),
       decoration: BoxDecoration(
         color: theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(GimmyRadii.pill),
       ),
       child: Text(
-        'ACTIVE PLAN',
+        isSample ? 'SAMPLE PLAN' : 'ACTIVE PLAN',
         overflow: TextOverflow.ellipsis,
         style: tokens.labelMono.copyWith(
-          color: theme.colorScheme.primaryContainer,
+          // Ink, not the fill: the container green fails contrast as text on
+          // a light card.
+          color: theme.colorScheme.primary,
           fontWeight: FontWeight.w600,
-          letterSpacing: 1.2,
+          letterSpacing: GimmyType.capsTracking,
         ),
       ),
     );
@@ -176,7 +194,7 @@ class TelemetryPill extends StatelessWidget {
       excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.symmetric(
-          horizontal: GimmySpacing.sm + 4,
+          horizontal: GimmySpacing.ms,
           vertical: GimmySpacing.sm,
         ),
         decoration: BoxDecoration(

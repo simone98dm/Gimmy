@@ -1,12 +1,19 @@
+// Every test here ends in a golden, which lives only on this machine.
+@Tags(['golden'])
+library;
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gimmy/core/theme/app_theme.dart';
 import 'package:gimmy/core/widgets/app_sidebar.dart';
 import 'package:gimmy/core/widgets/desktop_layout.dart';
 import 'package:gimmy/core/widgets/gimmy_scaffold.dart';
+import 'package:gimmy/data/exercises/exercise_catalog.dart';
+import 'package:gimmy/data/exercises/exercise_demos.dart';
 import 'package:gimmy/data/fit/fit_file_picker.dart';
 import 'package:gimmy/data/fit/fit_workout_parser.dart';
 import 'package:gimmy/data/models/plan.dart';
@@ -17,6 +24,7 @@ import 'package:gimmy/features/import/bloc/import_bloc.dart';
 import 'package:gimmy/features/import/view/import_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../support/fake_exercise_demos.dart';
 import '../../support/test_fonts.dart';
 import '../../support/sample_fit.dart';
 
@@ -31,26 +39,48 @@ Plan sampleParsedPlan() => FitWorkoutParser.parse(
   importedAt: DateTime(2026, 9, 22, 10),
 );
 
-Widget harness({required Brightness brightness, required ImportBloc bloc}) {
+Widget harness({
+  required Brightness brightness,
+  required ImportBloc bloc,
+  required ExerciseDemos demos,
+}) {
   return MaterialApp(
     debugShowCheckedModeBanner: false,
     theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
     home: GimmyScaffold(
       label: 'Import plan',
       sidebarItem: SidebarItem.import,
-      child: BlocProvider.value(value: bloc, child: const ImportPage()),
+      // First run, the state the idle page is mostly seen in: the sample
+      // workout is on offer under the picker.
+      child: withExerciseDemos(
+        demos: demos,
+        BlocProvider.value(
+          value: bloc,
+          child: const ImportPage(offerSample: true),
+        ),
+      ),
     ),
   );
 }
 
 void main() {
   late Directory tempDir;
+  late ExerciseCatalog catalog;
+  late ExerciseDemos demos;
 
-  setUpAll(loadAppFonts);
+  setUpAll(() async {
+    await loadAppFonts();
+    // Read here, outside fake async, where the asset read can complete.
+    catalog = await ExerciseCatalog.load(rootBundle);
+  });
 
   setUp(() async {
     tempDir = Directory.systemTemp.createTempSync('gimmy-golden');
     SharedPreferences.setMockInitialValues({});
+    demos = ExerciseDemos(
+      media: FakeExerciseMediaStore(),
+      loadCatalog: () async => catalog,
+    );
   });
 
   tearDown(() {
@@ -65,6 +95,7 @@ void main() {
     settingsRepository: SettingsRepository(
       preferences: await SharedPreferences.getInstance(),
     ),
+    demos: demos,
   );
 
   Future<void> renderAndCapture(
@@ -90,7 +121,9 @@ void main() {
     );
     addTearDown(bloc.close);
 
-    await tester.pumpWidget(harness(brightness: brightness, bloc: bloc));
+    await tester.pumpWidget(
+      harness(brightness: brightness, bloc: bloc, demos: demos),
+    );
     if (event != null) {
       bloc.add(event);
       await tester.pumpAndSettle();

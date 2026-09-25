@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `gimmy` is a Flutter app (Dart SDK `^3.13.4`, Flutter 3.47.5 stable, bundle id
 `com.simone98dm.gimmy`) that imports a Garmin `.fit` workout plan, guides the user through it
 step by step, and tracks a streak and a calendar of past sessions. Everything is local: no
-backend, no account, no network calls at runtime. Live BPM comes from a paired Bluetooth
+backend, no account. The one network call is downloading exercise demos when a plan is saved. Live BPM comes from a paired Bluetooth
 heart-rate sensor (a Garmin watch or strap).
 
 Platforms: **android, ios and web** (no macos/linux/windows). Adding one requires
@@ -38,7 +38,9 @@ them checks `GimmyMotion.isReduced(context)` and stays still when the platform a
 
 ### Things that will bite you
 
-- **Design tokens.** Colors, sizes and type all come from `AppTheme` or `GimmyTokens.of(context)`.
+- **Design tokens.** Read `DESIGN.md` before drawing any UI: it is the visual and UX contract
+  (tokens, type ramp, spacing, motion, components, do's and don'ts).
+  Colors, sizes and type all come from `AppTheme` or `GimmyTokens.of(context)`.
   No widget hard-codes a color. The light palette's accents are deliberately darker than the
   design doc states — the documented values fail WCAG contrast as foregrounds, and
   `test/core/theme/contrast_test.dart` enforces that.
@@ -52,7 +54,29 @@ them checks `GimmyMotion.isReduced(context)` and stays still when the platform a
 - **Storage is platform-split** behind `DocumentStore`: a file with an atomic rename on mobile,
   `shared_preferences` (local storage) on the web, chosen by conditional import in
   `open_document_store.dart`. `path_provider` has no web implementation, so nothing outside
-  `document_store_io.dart` may import it.
+  the `*_io.dart` files behind a conditional import (`document_store_io.dart`,
+  `exercise_media_store_io.dart`) may import it.
+- **Exercise demos** (`lib/data/exercises/`, `ExerciseDemos`). `assets/exercises/catalog.json` is
+  **generated** by `tool/build_exercise_catalog.dart` from
+  [exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset), pinned to the commit in
+  `AppConfig.exerciseMediaBaseUrl`; never edit it by hand, and bump the two together. On import
+  each working step is matched by name (`matchExercise`; its table test is the contract) and the
+  pick, overridable in the preview, is stored as `PlanStep.exerciseId`. Saving fetches the media
+  in the background (files on mobile; the web loads it on demand). Nothing about demos may throw:
+  a miss or a failed download just leaves the step with its dial.
+  The dataset is MIT (its `LICENSE` ships in `assets/exercises/` and is listed on the licences
+  page), but **the GIFs and JPGs are © Gym visual** and need their own licence: never commit
+  them to this repo, and every screen that shows one carries `AppConfig.exerciseMediaCredit`.
+  In widget tests the catalog asset read never completes under fake async: use
+  `withExerciseDemos` (no demos) or `oneDemo` from `test/support/fake_exercise_demos.dart`, or
+  load the catalog in `setUpAll`. Animated GIFs do not decode in tests at all, so goldens show
+  the layout, not the picture.
+- **Session history must never lose old sessions.** `SessionRepository` parses entry by
+  entry: an unreadable session is skipped (logged), and `upsert` writes the raw entries back
+  so it survives on disk. New fields on `WorkoutSession` must be optional in `fromJson`;
+  step records (`plannedSteps`, `steps`, heart rate) exist only on sessions recorded after
+  they were added, and `hasStepRecords` tells them apart. Keep a test that loads the old
+  JSON shape.
 - **Widget tests run under fake async**, so `dart:io` futures never complete: seeding a repository
   in a widget test hangs rather than fails. Do it inside `tester.runAsync`.
 - **Goldens need fonts loaded.** Call `loadAppFonts()` from `test/support/test_fonts.dart` in
@@ -98,7 +122,8 @@ flutter run                          # run on connected device/simulator (debug 
 flutter analyze                      # lint + static analysis
 flutter test                         # all tests
 flutter test test/data/fit/          # one directory
-flutter test --update-goldens        # after an intentional UI change
+flutter test --update-goldens        # after an intentional UI change, and once after a fresh clone
+flutter test --exclude-tags golden   # what CI runs: golden PNGs are local-only, never in git
 flutter test --coverage              # writes coverage/lcov.info
 flutter build apk / flutter build ios
 flutter build web --release        # dart2js; `--wasm` also compiles
@@ -135,7 +160,7 @@ starting with an underscore, so constructors injecting into private fields canno
   Execution page must wrap it in `withHeartRate` from `test/support/fake_heart_rate_monitor.dart`.
 - `flutter_blue_plus` is licensed free for personal use only, and its Android Gradle plugin
   POSTs the app id/name/version to the author's license endpoint on every Android build. The
-  app itself still makes no network calls at runtime.
+  app itself makes no network calls at runtime beyond the exercise demo downloads.
 
 # CLAUDE.md
 

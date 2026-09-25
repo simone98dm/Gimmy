@@ -25,11 +25,10 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
-      # Goldens are rendered with the app's bundled fonts, so they are stable
-      # across machines. A failure here means the UI changed — rerun with
-      # --update-goldens locally and commit the new images.
+      # Golden images are not in git (see .gitignore), so the golden-tagged
+      # tests only run locally.
       - name: Test
-        run: flutter test --coverage
+        run: flutter test --coverage --exclude-tags golden
 
       - uses: actions/upload-artifact@v4
         if: failure()

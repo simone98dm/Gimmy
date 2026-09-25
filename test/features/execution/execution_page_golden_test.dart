@@ -1,3 +1,7 @@
+// Every test here ends in a golden, which lives only on this machine.
+@Tags(['golden'])
+library;
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -7,6 +11,7 @@ import 'package:gimmy/core/theme/app_theme.dart';
 import 'package:gimmy/core/widgets/app_sidebar.dart';
 import 'package:gimmy/core/widgets/desktop_layout.dart';
 import 'package:gimmy/core/widgets/gimmy_scaffold.dart';
+import 'package:gimmy/data/exercises/exercise_demos.dart';
 import 'package:gimmy/data/fit/fit_workout_parser.dart';
 import 'package:gimmy/data/models/plan.dart';
 import 'package:gimmy/data/storage/document_store_io.dart';
@@ -14,6 +19,7 @@ import 'package:gimmy/data/storage/session_repository.dart';
 import 'package:gimmy/features/execution/bloc/execution_bloc.dart';
 import 'package:gimmy/features/execution/view/execution_page.dart';
 
+import '../../support/fake_exercise_demos.dart';
 import '../../support/test_fonts.dart';
 import 'execution_bloc_test.dart' show FakeTicker;
 import '../../support/fake_heart_rate_monitor.dart';
@@ -49,6 +55,9 @@ void main() {
     required Future<void> Function(ExecutionBloc bloc) drive,
     Brightness brightness = Brightness.dark,
     bool desktop = false,
+    Plan? plan,
+    ExerciseDemos? demos,
+    Future<void> Function()? interact,
   }) async {
     if (desktop) {
       tester.view.physicalSize = const Size(1440, 900);
@@ -64,12 +73,13 @@ void main() {
     late final ExecutionBloc bloc;
     await tester.runAsync(() async {
       bloc = ExecutionBloc(
-        plan: sample(),
+        plan: plan ?? sample(),
         sessionRepository: SessionRepository(
           store: FileDocumentStore('sessions.json', directory: tempDir),
         ),
         ticker: ticker,
         now: () => DateTime(2026, 9, 22, 18),
+        advanceGuard: Duration.zero,
       )..add(const ExecutionStarted());
       await pumpEventQueue(times: 50);
       await drive(bloc);
@@ -77,16 +87,24 @@ void main() {
     addTearDown(bloc.close);
 
     await tester.pumpWidget(
-      withHeartRate(
-        MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: brightness == Brightness.dark ? AppTheme.dark : AppTheme.light,
-          home: BlocProvider.value(
-            value: bloc,
-            child: GimmyScaffold(
-              label: 'Workout',
-              sidebarItem: SidebarItem.active,
-              child: ExecutionPage(onDone: () {}),
+      withExerciseDemos(
+        demos: demos,
+        withHeartRate(
+          MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: brightness == Brightness.dark
+                ? AppTheme.dark
+                : AppTheme.light,
+            home: BlocProvider.value(
+              value: bloc,
+              child: GimmyScaffold(
+                label: 'Workout',
+                extendsToBottomEdge: true, // as ExecutionRoute
+                sidebarItem: SidebarItem.active,
+                // As ExecutionRoute has it: the back arrow is the one exit.
+                leading: BackButton(onPressed: () {}),
+                child: ExecutionPage(onDone: () {}),
+              ),
             ),
           ),
         ),
@@ -95,7 +113,9 @@ void main() {
     // Not `pumpAndSettle`: the live dot pulses for as long as the timer is
     // running, so there is no settled state to wait for.
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    // Past the step cross-fade and the summary's entrance.
+    await tester.pump(const Duration(milliseconds: 300));
+    await interact?.call();
 
     await expectLater(
       find.byType(MaterialApp),
@@ -128,6 +148,41 @@ void main() {
         bloc.add(const ExecutionSkipped());
         await pumpEventQueue(times: 50);
       },
+    );
+  });
+
+  testWidgets('a reps step turned to its demo', (tester) async {
+    await capture(
+      tester,
+      name: 'execution_reps_demo',
+      plan: sample().withExercise('Squat', '0001'),
+      demos: oneDemo(FakeExerciseMediaStore(available: ['0001'])),
+      drive: (bloc) async {
+        bloc.add(const ExecutionSkipped());
+        await pumpEventQueue(times: 50);
+      },
+      interact: () async {
+        await tester.drag(find.byType(PageView), const Offset(-600, 0));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+      },
+    );
+  });
+
+  testWidgets('desktop: a reps step with its demo beside the dial', (
+    tester,
+  ) async {
+    await capture(
+      tester,
+      name: 'execution_desktop_demo',
+      desktop: true,
+      plan: sample().withExercise('Squat', '0001'),
+      demos: oneDemo(FakeExerciseMediaStore(available: ['0001'])),
+      drive: (bloc) async {
+        bloc.add(const ExecutionSkipped());
+        await pumpEventQueue(times: 50);
+      },
+      interact: () async => tester.pump(const Duration(milliseconds: 50)),
     );
   });
 

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/logging/log_observers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/desktop_layout.dart';
+import '../../data/exercises/exercise_demos.dart';
 import '../../data/heart_rate/ble_heart_rate_monitor.dart';
 import '../../data/heart_rate/heart_rate_monitor.dart';
 import '../../data/storage/plan_repository.dart';
@@ -28,6 +29,7 @@ class GimmyApp extends StatelessWidget {
         RepositoryProvider(create: (_) => PlanRepository()),
         RepositoryProvider(create: (_) => SessionRepository()),
         RepositoryProvider(create: (_) => SettingsRepository()),
+        RepositoryProvider(create: (_) => ExerciseDemos()),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -74,12 +76,15 @@ class _ThemedApp extends StatelessWidget {
     final themeMode = context.select(
       (AppBloc bloc) => bloc.state.settings.themeMode,
     );
+    final themeId = context.select(
+      (AppBloc bloc) => bloc.state.settings.themeId,
+    );
 
     return MaterialApp(
       title: 'Gimmy',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
+      theme: AppTheme.lightFor(themeId),
+      darkTheme: AppTheme.darkFor(themeId),
       themeMode: themeMode,
       navigatorObservers: [_navigationLog],
       builder: (context, child) => _PhoneFrame(child: child),

@@ -21,7 +21,7 @@ class SidebarStats extends StatelessWidget {
 
     final label = tokens.labelMono.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
-      letterSpacing: 1.2,
+      letterSpacing: GimmyType.capsTracking,
     );
 
     return Container(

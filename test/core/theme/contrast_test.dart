@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gimmy/core/theme/app_theme.dart';
+import 'package:gimmy/core/theme/gimmy_theme_id.dart';
 import 'package:gimmy/core/theme/gimmy_tokens.dart';
 
 /// WCAG 2.1 relative-luminance contrast ratio.
@@ -23,138 +24,161 @@ void main() {
   /// so these pairings are load-bearing, not cosmetic. They regressed once
   /// already when the light palette was derived from the design doc's stated
   /// accent values.
-  for (final (name, theme) in [
-    ('dark', AppTheme.dark),
-    ('light', AppTheme.light),
-  ]) {
-    group('$name theme contrast', () {
-      final scheme = theme.colorScheme;
-      final tokens = theme.extension<GimmyTokens>()!;
+  for (final id in GimmyThemeId.values) {
+    for (final brightness in Brightness.values) {
+      final name = '${id.name} ${brightness.name}';
+      final theme = brightness == Brightness.dark
+          ? AppTheme.darkFor(id)
+          : AppTheme.lightFor(id);
+      group('$name theme contrast', () {
+        final scheme = theme.colorScheme;
+        final tokens = theme.extension<GimmyTokens>()!;
 
-      void expectAtLeast(String label, Color fg, Color bg, double min) {
-        final ratio = contrast(fg, bg);
-        expect(
-          ratio,
-          greaterThanOrEqualTo(min),
-          reason: '$label is ${ratio.toStringAsFixed(2)}:1, needs $min:1',
-        );
-      }
+        void expectAtLeast(String label, Color fg, Color bg, double min) {
+          final ratio = contrast(fg, bg);
+          expect(
+            ratio,
+            greaterThanOrEqualTo(min),
+            reason: '$label is ${ratio.toStringAsFixed(2)}:1, needs $min:1',
+          );
+        }
 
-      test('body and muted text on the page background', () {
-        expectAtLeast('onSurface', scheme.onSurface, scheme.surface, kAaNormal);
-        expectAtLeast(
-          'onSurfaceVariant',
-          scheme.onSurfaceVariant,
-          scheme.surface,
-          kAaNormal,
-        );
-      });
-
-      test('text on cards and on modals', () {
-        expectAtLeast(
-          'onSurface on card',
-          scheme.onSurface,
-          scheme.surfaceContainer,
-          kAaNormal,
-        );
-        expectAtLeast(
-          'onSurface on modal',
-          scheme.onSurface,
-          tokens.modalSurface,
-          kAaNormal,
-        );
-      });
-
-      test('primary CTA label on its fill', () {
-        expectAtLeast(
-          'onPrimaryContainer',
-          scheme.onPrimaryContainer,
-          scheme.primaryContainer,
-          kAaNormal,
-        );
-        expectAtLeast('onPrimary', scheme.onPrimary, scheme.primary, kAaNormal);
-      });
-
-      test('accent text on the page background', () {
-        expectAtLeast('primary', scheme.primary, scheme.surface, kAaNormal);
-      });
-
-      test('the active nav destination against the nav bar', () {
-        expectAtLeast(
-          'nav active',
-          scheme.primary,
-          scheme.surfaceContainerLowest,
-          kAaNormal,
-        );
-        expectAtLeast(
-          'nav inactive',
-          scheme.onSurfaceVariant,
-          scheme.surfaceContainerLowest,
-          kAaNormal,
-        );
-      });
-
-      test('the timer ring stays legible at every stage of the countdown', () {
-        for (final (label, color) in [
-          ('safe', tokens.timerSafe),
-          ('warning', tokens.timerWarning),
-          ('critical', tokens.timerCritical),
-        ]) {
+        test('body and muted text on the page background', () {
           expectAtLeast(
-            'timer $label on surface',
-            color,
+            'onSurface',
+            scheme.onSurface,
             scheme.surface,
-            kAaGraphics,
+            kAaNormal,
           );
           expectAtLeast(
-            'timer $label on card',
-            color,
-            scheme.surfaceContainer,
-            kAaGraphics,
+            'onSurfaceVariant',
+            scheme.onSurfaceVariant,
+            scheme.surface,
+            kAaNormal,
           );
-        }
-      });
+        });
 
-      test('intensity colors are distinguishable against a card', () {
-        for (final (label, color) in [
-          ('active', tokens.intensityActive),
-          ('rest', tokens.intensityRest),
-          ('easy', tokens.intensityEasy),
-        ]) {
+        test('text on cards and on modals', () {
           expectAtLeast(
-            'intensity $label',
-            color,
+            'onSurface on card',
+            scheme.onSurface,
             scheme.surfaceContainer,
-            kAaGraphics,
+            kAaNormal,
           );
-        }
-      });
+          expectAtLeast(
+            'onSurface on modal',
+            scheme.onSurface,
+            tokens.modalSurface,
+            kAaNormal,
+          );
+        });
 
-      // Intensity and timer colours also colour small mono labels ("ACTIVE",
-      // "22 skipped", the calendar's session days), so they are text too.
-      test('intensity colors read as text on the page and on a card', () {
-        for (final (label, color) in [
-          ('active', tokens.intensityActive),
-          ('rest', tokens.intensityRest),
-          ('critical', tokens.timerCritical),
-        ]) {
-          for (final (surface, bg) in [
-            ('surface', scheme.surface),
-            ('card', scheme.surfaceContainer),
-          ]) {
-            expectAtLeast('$label on $surface', color, bg, kAaNormal);
-          }
-        }
-      });
+        test('primary CTA label on its fill', () {
+          expectAtLeast(
+            'onPrimaryContainer',
+            scheme.onPrimaryContainer,
+            scheme.primaryContainer,
+            kAaNormal,
+          );
+          expectAtLeast(
+            'onPrimary',
+            scheme.onPrimary,
+            scheme.primary,
+            kAaNormal,
+          );
+        });
 
-      test('card hairlines are visible against the card they outline', () {
-        expectAtLeast(
-          'cardBorder',
-          tokens.cardBorder,
-          scheme.surfaceContainer,
-          1.1,
+        test('accent text on the page background', () {
+          expectAtLeast('primary', scheme.primary, scheme.surface, kAaNormal);
+        });
+
+        test('the active nav destination against the nav bar', () {
+          expectAtLeast(
+            'nav active',
+            scheme.primary,
+            scheme.surfaceContainerLowest,
+            kAaNormal,
+          );
+          expectAtLeast(
+            'nav inactive',
+            scheme.onSurfaceVariant,
+            scheme.surfaceContainerLowest,
+            kAaNormal,
+          );
+        });
+
+        test(
+          'the timer ring stays legible at every stage of the countdown',
+          () {
+            for (final (label, color) in [
+              ('safe', tokens.timerSafe),
+              ('warning', tokens.timerWarning),
+              ('critical', tokens.timerCritical),
+            ]) {
+              expectAtLeast(
+                'timer $label on surface',
+                color,
+                scheme.surface,
+                kAaGraphics,
+              );
+              expectAtLeast(
+                'timer $label on card',
+                color,
+                scheme.surfaceContainer,
+                kAaGraphics,
+              );
+            }
+          },
         );
+
+        test('intensity colors are distinguishable against a card', () {
+          for (final (label, color) in [
+            ('active', tokens.intensityActive),
+            ('rest', tokens.intensityRest),
+            ('easy', tokens.intensityEasy),
+          ]) {
+            expectAtLeast(
+              'intensity $label',
+              color,
+              scheme.surfaceContainer,
+              kAaGraphics,
+            );
+          }
+        });
+
+        // Intensity and timer colours also colour small mono labels ("ACTIVE",
+        // "22 skipped", the calendar's session days), so they are text too.
+        test('intensity colors read as text on the page and on a card', () {
+          for (final (label, color) in [
+            ('active', tokens.intensityActive),
+            ('rest', tokens.intensityRest),
+            ('critical', tokens.timerCritical),
+          ]) {
+            for (final (surface, bg) in [
+              ('surface', scheme.surface),
+              ('card', scheme.surfaceContainer),
+            ]) {
+              expectAtLeast('$label on $surface', color, bg, kAaNormal);
+            }
+          }
+        });
+
+        test('card hairlines are visible against the card they outline', () {
+          expectAtLeast(
+            'cardBorder',
+            tokens.cardBorder,
+            scheme.surfaceContainer,
+            1.1,
+          );
+        });
       });
-    });
+    }
   }
+
+  test('Sophisticated Blue light: accent buttons carry light text', () {
+    final scheme = AppTheme.lightFor(GimmyThemeId.sophisticatedBlue).colorScheme;
+    // Near-black on a mid blue read as muddy; the label is white, and the
+    // fill is deep enough to hold it at AA (checked in the group above).
+    expect(scheme.onPrimaryContainer, const Color(0xFFFFFFFF));
+  });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'gimmy_colors.dart';
 import 'tokens.dart';
 
 /// Design tokens that have no home in Material's `ColorScheme` or `TextTheme`
@@ -18,6 +19,7 @@ class GimmyTokens extends ThemeExtension<GimmyTokens> {
     required this.intensityRest,
     required this.intensityEasy,
     required this.cardBorder,
+    required this.insetSurface,
     required this.modalSurface,
     required this.modalBorder,
     required this.cardShadow,
@@ -26,6 +28,7 @@ class GimmyTokens extends ThemeExtension<GimmyTokens> {
     required this.activeGlow,
     required this.metricDisplay,
     required this.metricDisplayMobile,
+    required this.metricLg,
     required this.metricMd,
     required this.labelMono,
   });
@@ -54,6 +57,10 @@ class GimmyTokens extends ThemeExtension<GimmyTokens> {
   final Color intensityEasy;
 
   final Color cardBorder;
+
+  /// A recessed tile inside a card, sheet or dialog. Dark recesses darker than
+  /// the card; light cannot (cards are already white), so it tints grey.
+  final Color insetSurface;
   final Color modalSurface;
   final Color modalBorder;
 
@@ -72,6 +79,9 @@ class GimmyTokens extends ThemeExtension<GimmyTokens> {
   /// counters, durations. Keeps digits from jittering as values change.
   final TextStyle metricDisplay;
   final TextStyle metricDisplayMobile;
+
+  /// Secondary live readouts beside the countdown (heart rate).
+  final TextStyle metricLg;
   final TextStyle metricMd;
   final TextStyle labelMono;
 
@@ -116,6 +126,14 @@ class GimmyTokens extends ThemeExtension<GimmyTokens> {
     fontFeatures: [FontFeature.tabularFigures()],
   );
 
+  static const _monoLg = TextStyle(
+    fontFamily: GimmyFonts.mono,
+    fontSize: 28,
+    height: 1,
+    fontWeight: FontWeight.w600,
+    fontFeatures: [FontFeature.tabularFigures()],
+  );
+
   static const _monoMd = TextStyle(
     fontFamily: GimmyFonts.mono,
     fontSize: 20,
@@ -124,70 +142,74 @@ class GimmyTokens extends ThemeExtension<GimmyTokens> {
     fontFeatures: [FontFeature.tabularFigures()],
   );
 
+  // 12, not 11: this carries the step counter and the next-up target, which
+  // are read at arm's length mid-set.
   static const _monoLabel = TextStyle(
     fontFamily: GimmyFonts.mono,
-    fontSize: 11,
-    height: 14 / 11,
+    fontSize: 12,
+    height: 16 / 12,
     fontWeight: FontWeight.w500,
+    // Also sets lowercase values ("10 reps"), so only a touch; all-caps
+    // labels add [GimmyType.capsTracking] themselves.
     letterSpacing: 0.5,
     fontFeatures: [FontFeature.tabularFigures()],
   );
 
-  static const dark = GimmyTokens(
-    timerSafe: GimmyPalette.darkAccentEmerald,
-    timerWarning: GimmyPalette.darkAccentAmber,
-    timerCritical: GimmyPalette.darkAccentRed,
-    intensityActive: GimmyPalette.darkAccentEmerald,
-    intensityRest: GimmyPalette.darkAccentAmber,
-    intensityEasy: GimmyPalette.darkOnSurfaceVariant,
-    cardBorder: GimmyPalette.darkCardBorder,
-    modalSurface: GimmyPalette.darkModalSurface,
-    modalBorder: GimmyPalette.darkModalBorder,
-    cardShadow: [
-      BoxShadow(color: Color(0x66000000), blurRadius: 20, offset: Offset(0, 4)),
-    ],
-    modalShadow: [
-      BoxShadow(
-        color: Color(0x99000000),
-        blurRadius: 32,
-        offset: Offset(0, 12),
-      ),
-    ],
-    activeGlow: [BoxShadow(color: Color(0x4000E676), blurRadius: 16)],
-    chromeShadowColor: Color(0x99000000),
-    metricDisplay: _monoDisplay,
-    metricDisplayMobile: _monoDisplayMobile,
-    metricMd: _monoMd,
-    labelMono: _monoLabel,
-  );
+  static const _darkCardShadow = [
+    BoxShadow(color: Color(0x66000000), blurRadius: 20, offset: Offset(0, 4)),
+  ];
+  static const _lightCardShadow = [
+    BoxShadow(color: Color(0x14000000), blurRadius: 20, offset: Offset(0, 4)),
+  ];
+  static const _darkModalShadow = [
+    BoxShadow(color: Color(0x99000000), blurRadius: 32, offset: Offset(0, 12)),
+  ];
+  static const _lightModalShadow = [
+    BoxShadow(color: Color(0x29000000), blurRadius: 32, offset: Offset(0, 12)),
+  ];
 
-  static const light = GimmyTokens(
-    timerSafe: GimmyPalette.lightAccentEmerald,
-    timerWarning: GimmyPalette.lightAccentAmber,
-    timerCritical: GimmyPalette.lightAccentRed,
-    intensityActive: GimmyPalette.lightAccentEmerald,
-    intensityRest: GimmyPalette.lightAccentAmber,
-    intensityEasy: GimmyPalette.lightOnSurfaceVariant,
-    cardBorder: GimmyPalette.lightCardBorder,
-    modalSurface: GimmyPalette.lightModalSurface,
-    modalBorder: GimmyPalette.lightModalBorder,
-    cardShadow: [
-      BoxShadow(color: Color(0x14000000), blurRadius: 20, offset: Offset(0, 4)),
-    ],
-    modalShadow: [
-      BoxShadow(
-        color: Color(0x29000000),
-        blurRadius: 32,
-        offset: Offset(0, 12),
-      ),
-    ],
-    activeGlow: [BoxShadow(color: Color(0x3300C853), blurRadius: 16)],
-    chromeShadowColor: Color(0x1F000000),
-    metricDisplay: _monoDisplay,
-    metricDisplayMobile: _monoDisplayMobile,
-    metricMd: _monoMd,
-    labelMono: _monoLabel,
-  );
+  /// Builds the tokens for one theme × brightness. [colors] supplies
+  /// everything that changes per theme; shadows and text styles only change
+  /// with [brightness] (or not at all).
+  ///
+  /// `activeGlow` derives from `colors.scheme.primaryContainer` — the bright
+  /// fill role, not [GimmyColors.accentPeak] (which is darkened for text
+  /// contrast in light mode and would dim the glow). For green this reproduces
+  /// today's hard-coded values exactly: dark 0x40 on #00E676, light 0x33 on
+  /// #00C853 — both are that theme's `primaryContainer`.
+  factory GimmyTokens.from(GimmyColors colors, Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    return GimmyTokens(
+      timerSafe: colors.accentPeak,
+      timerWarning: colors.accentPacing,
+      timerCritical: colors.accentCritical,
+      intensityActive: colors.accentPeak,
+      intensityRest: colors.accentPacing,
+      intensityEasy: colors.scheme.onSurfaceVariant,
+      cardBorder: colors.cardBorder,
+      insetSurface: isDark
+          ? colors.scheme.surfaceContainerLow
+          : colors.scheme.surfaceContainerHigh,
+      modalSurface: colors.modalSurface,
+      modalBorder: colors.modalBorder,
+      cardShadow: isDark ? _darkCardShadow : _lightCardShadow,
+      modalShadow: isDark ? _darkModalShadow : _lightModalShadow,
+      activeGlow: [
+        BoxShadow(
+          color: colors.scheme.primaryContainer.withAlpha(isDark ? 0x40 : 0x33),
+          blurRadius: 16,
+        ),
+      ],
+      chromeShadowColor: isDark
+          ? const Color(0x99000000)
+          : const Color(0x1F000000),
+      metricDisplay: _monoDisplay,
+      metricDisplayMobile: _monoDisplayMobile,
+      metricLg: _monoLg,
+      metricMd: _monoMd,
+      labelMono: _monoLabel,
+    );
+  }
 
   @override
   GimmyTokens copyWith({
@@ -198,6 +220,7 @@ class GimmyTokens extends ThemeExtension<GimmyTokens> {
     Color? intensityRest,
     Color? intensityEasy,
     Color? cardBorder,
+    Color? insetSurface,
     Color? modalSurface,
     Color? modalBorder,
     List<BoxShadow>? cardShadow,
@@ -206,6 +229,7 @@ class GimmyTokens extends ThemeExtension<GimmyTokens> {
     Color? chromeShadowColor,
     TextStyle? metricDisplay,
     TextStyle? metricDisplayMobile,
+    TextStyle? metricLg,
     TextStyle? metricMd,
     TextStyle? labelMono,
   }) {
@@ -217,6 +241,7 @@ class GimmyTokens extends ThemeExtension<GimmyTokens> {
       intensityRest: intensityRest ?? this.intensityRest,
       intensityEasy: intensityEasy ?? this.intensityEasy,
       cardBorder: cardBorder ?? this.cardBorder,
+      insetSurface: insetSurface ?? this.insetSurface,
       modalSurface: modalSurface ?? this.modalSurface,
       modalBorder: modalBorder ?? this.modalBorder,
       cardShadow: cardShadow ?? this.cardShadow,
@@ -225,6 +250,7 @@ class GimmyTokens extends ThemeExtension<GimmyTokens> {
       chromeShadowColor: chromeShadowColor ?? this.chromeShadowColor,
       metricDisplay: metricDisplay ?? this.metricDisplay,
       metricDisplayMobile: metricDisplayMobile ?? this.metricDisplayMobile,
+      metricLg: metricLg ?? this.metricLg,
       metricMd: metricMd ?? this.metricMd,
       labelMono: labelMono ?? this.labelMono,
     );
@@ -241,6 +267,7 @@ class GimmyTokens extends ThemeExtension<GimmyTokens> {
       intensityRest: Color.lerp(intensityRest, other.intensityRest, t)!,
       intensityEasy: Color.lerp(intensityEasy, other.intensityEasy, t)!,
       cardBorder: Color.lerp(cardBorder, other.cardBorder, t)!,
+      insetSurface: Color.lerp(insetSurface, other.insetSurface, t)!,
       modalSurface: Color.lerp(modalSurface, other.modalSurface, t)!,
       modalBorder: Color.lerp(modalBorder, other.modalBorder, t)!,
       cardShadow: BoxShadow.lerpList(cardShadow, other.cardShadow, t)!,
@@ -257,6 +284,7 @@ class GimmyTokens extends ThemeExtension<GimmyTokens> {
         other.metricDisplayMobile,
         t,
       )!,
+      metricLg: TextStyle.lerp(metricLg, other.metricLg, t)!,
       metricMd: TextStyle.lerp(metricMd, other.metricMd, t)!,
       labelMono: TextStyle.lerp(labelMono, other.labelMono, t)!,
     );

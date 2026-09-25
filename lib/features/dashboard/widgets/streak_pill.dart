@@ -14,10 +14,10 @@ class StreakPill extends StatelessWidget {
   final int best;
 
   String get _label => switch ((streak, best)) {
-    (1, _) => '1 DAY STREAK',
+    (1, _) => '1-DAY STREAK',
     (0, 0) => 'START A STREAK TODAY',
     (0, _) => 'BEST $best · START AGAIN TODAY',
-    _ => '$streak DAYS STREAK',
+    _ => '$streak-DAY STREAK',
   };
 
   @override
@@ -31,8 +31,8 @@ class StreakPill extends StatelessWidget {
       excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.symmetric(
-          horizontal: GimmySpacing.sm + 4,
-          vertical: 6,
+          horizontal: GimmySpacing.ms,
+          vertical: GimmySpacing.xs,
         ),
         decoration: BoxDecoration(
           color: theme.colorScheme.surfaceContainerHigh,
@@ -59,7 +59,7 @@ class StreakPill extends StatelessWidget {
                     ? theme.colorScheme.primary
                     : theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 1.2,
+                letterSpacing: GimmyType.capsTracking,
               ),
             ),
           ],

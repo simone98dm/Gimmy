@@ -6,6 +6,7 @@ import 'app/view/gimmy_app.dart';
 import 'core/config/feature_flags.dart';
 import 'core/logging/app_log.dart';
 import 'core/logging/log_observers.dart';
+import 'data/exercises/exercise_catalog.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +32,8 @@ void main() {
   // Event props in the log in release builds too, not just the class name.
   EquatableConfig.stringify = true;
   Bloc.observer = const LoggingBlocObserver();
+
+  registerExerciseDatasetLicense();
 
   AppLog.info('app', 'launch v${AppConfig.appVersion}');
   runApp(const GimmyApp());

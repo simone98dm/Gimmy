@@ -136,7 +136,7 @@ class _Header extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: GimmySpacing.xxs),
               Text(
                 'BLUETOOTH LOW ENERGY · HEART RATE',
                 style: tokens.labelMono.copyWith(
@@ -334,7 +334,7 @@ class _MonitorRow extends StatelessWidget {
       subtitle: Row(
         children: [
           Icon(signalIcon, size: 14, color: theme.colorScheme.primary),
-          const SizedBox(width: 2),
+          const SizedBox(width: GimmySpacing.xxs),
           Text(
             '$percent% $quality',
             style: tokens.labelMono.copyWith(
@@ -423,7 +423,7 @@ class _RowShell extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: GimmySpacing.xxs),
                 subtitle,
               ],
             ),
@@ -466,7 +466,7 @@ class _BroadcastNote extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(GimmySpacing.sm),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
+        color: GimmyTokens.of(context).insetSurface,
         borderRadius: GimmyRadii.cell,
       ),
       child: Row(

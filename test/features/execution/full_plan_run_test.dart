@@ -48,6 +48,7 @@ void main() {
         sessionRepository: sessions,
         ticker: ticker,
         now: () => startedAt,
+        advanceGuard: Duration.zero,
       )..add(const ExecutionStarted());
       await pumpEventQueue();
 

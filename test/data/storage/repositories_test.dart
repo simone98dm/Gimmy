@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gimmy/core/theme/gimmy_theme_id.dart';
 import 'package:gimmy/data/models/app_settings.dart';
 import 'package:gimmy/data/models/plan.dart';
 import 'package:gimmy/data/models/plan_step.dart';
@@ -179,6 +180,98 @@ void main() {
       expect(stored, running);
     });
 
+    test('loads sessions saved before step records existed', () async {
+      // Exactly what a 1.2 build wrote: no steps, no heart rate.
+      File('${tempDir.path}/sessions.json').writeAsStringSync('''
+[{"id":"s1","planId":"plan-1","planName":"Full Body Sample",
+  "startedAt":"2026-09-20T18:00:00.000","endedAt":"2026-09-20T18:40:00.000",
+  "totalActiveSeconds":2100,"status":"completed",
+  "stepsCompleted":20,"stepsSkipped":2}]
+''');
+      final repo = SessionRepository(
+        store: FileDocumentStore('sessions.json', directory: tempDir),
+      );
+
+      final loaded = (await repo.loadAll()).single;
+
+      expect(loaded.planName, 'Full Body Sample');
+      expect(loaded.stepsCompleted, 20);
+      expect(loaded.hasStepRecords, isFalse);
+      expect(loaded.steps, isEmpty);
+      expect(loaded.averageBpm, isNull);
+    });
+
+    test('one unreadable session does not take the rest with it', () async {
+      File('${tempDir.path}/sessions.json').writeAsStringSync('''
+[{"id":"s1","planId":"p","planName":"Kept",
+  "startedAt":"2026-09-20T18:00:00.000"},
+ {"id":"s2","planId":"p","planName":"Broken","startedAt":"not a date"},
+ {"id":"s3","planId":"p","planName":"Also kept",
+  "startedAt":"2026-09-21T18:00:00.000",
+  "steps":[{"name":"Squat","outcome":"sideways"}]}]
+''');
+      final repo = SessionRepository(
+        store: FileDocumentStore('sessions.json', directory: tempDir),
+      );
+
+      final loaded = await repo.loadAll();
+
+      expect(loaded.map((s) => s.planName), ['Kept', 'Also kept']);
+      // A bad step list costs that session its detail, not its place.
+      expect(loaded.last.hasStepRecords, isFalse);
+    });
+
+    test('saving leaves an entry it cannot read untouched on disk', () async {
+      File('${tempDir.path}/sessions.json').writeAsStringSync(
+        '[{"id":"s2","planId":"p","planName":"From a newer build",'
+        '"startedAt":"2026-09-20T18:00:00.000","status":"paused"}]',
+      );
+      final repo = SessionRepository(
+        store: FileDocumentStore('sessions.json', directory: tempDir),
+      );
+
+      await repo.upsert(session('s1', DateTime(2026, 9, 22, 18)));
+
+      final raw = File('${tempDir.path}/sessions.json').readAsStringSync();
+      expect(raw, contains('From a newer build'));
+      expect((await repo.loadAll()).map((s) => s.id), ['s1']);
+    });
+
+    test('step records and heart rate survive a round trip', () async {
+      final repo = SessionRepository(
+        store: FileDocumentStore('sessions.json', directory: tempDir),
+      );
+      final saved = session('s1', DateTime(2026, 9, 22, 18)).copyWith(
+        plannedSteps: 3,
+        steps: const [
+          StepRecord(
+            name: 'Squat',
+            target: '10 reps',
+            intensity: StepIntensity.active,
+            outcome: StepOutcome.done,
+            activeSeconds: 72,
+            averageBpm: 128,
+          ),
+          StepRecord(
+            name: 'Rest',
+            target: '01:00',
+            intensity: StepIntensity.rest,
+            outcome: StepOutcome.skipped,
+            activeSeconds: 0,
+          ),
+        ],
+        averageBpm: 124,
+        maxBpm: 171,
+      );
+
+      await repo.upsert(saved);
+      final loaded = (await repo.loadAll()).single;
+
+      expect(loaded, saved);
+      expect(loaded.hasStepRecords, isTrue);
+      expect(loaded.stepsNotReached, 1);
+    });
+
     test('recovers from a corrupt history file', () async {
       File('${tempDir.path}/sessions.json').writeAsStringSync('[[[');
       final repo = SessionRepository(
@@ -190,6 +283,14 @@ void main() {
   });
 
   group('JsonFileStore durability', () {
+    test('overlapping writes queue, and the last one wins', () async {
+      final store = FileDocumentStore('doc.json', directory: tempDir);
+
+      await Future.wait([for (var i = 0; i < 20; i++) store.write(i)]);
+
+      expect(await store.read(), 19);
+    });
+
     test('leaves no temporary file behind after a write', () async {
       final repo = PlanRepository(
         store: FileDocumentStore('plan.json', directory: tempDir),
@@ -306,6 +407,67 @@ void main() {
 
       expect((await repo.load()).themeMode, ThemeMode.system);
     });
+
+    test('defaults the color theme with no stored settings', () async {
+      final repo = SettingsRepository(
+        preferences: await SharedPreferences.getInstance(),
+      );
+
+      expect((await repo.load()).themeId, GimmyThemeId.fallback);
+    });
+
+    test('round-trips the color theme', () async {
+      final repo = SettingsRepository(
+        preferences: await SharedPreferences.getInstance(),
+      );
+
+      await repo.save(
+        const AppSettings(themeId: GimmyThemeId.sophisticatedBlue),
+      );
+
+      expect((await repo.load()).themeId, GimmyThemeId.sophisticatedBlue);
+    });
+
+    test('a settings file with no themeId key falls back quietly', () async {
+      SharedPreferences.setMockInitialValues({
+        SettingsRepository.storageKey: jsonEncode({'themeMode': 'dark'}),
+      });
+      final repo = SettingsRepository(
+        preferences: await SharedPreferences.getInstance(),
+      );
+
+      expect((await repo.load()).themeId, GimmyThemeId.fallback);
+    });
+
+    test('ignores a color theme name it does not recognise', () async {
+      SharedPreferences.setMockInitialValues({
+        SettingsRepository.storageKey: jsonEncode({'themeId': 'sepia'}),
+      });
+      final repo = SettingsRepository(
+        preferences: await SharedPreferences.getInstance(),
+      );
+
+      expect((await repo.load()).themeId, GimmyThemeId.fallback);
+    });
+
+    test(
+      'ignores the legacy accentColor key from before themes shipped',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          SettingsRepository.storageKey: jsonEncode({
+            'themeMode': 'dark',
+            'accentColor': '#00E676',
+          }),
+        });
+        final repo = SettingsRepository(
+          preferences: await SharedPreferences.getInstance(),
+        );
+
+        final settings = await repo.load();
+        expect(settings.themeMode, ThemeMode.dark);
+        expect(settings.themeId, GimmyThemeId.fallback);
+      },
+    );
 
     test('clear wipes the stored settings', () async {
       final prefs = await SharedPreferences.getInstance();

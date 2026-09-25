@@ -82,7 +82,7 @@ class DesktopCardHeader extends StatelessWidget {
           ),
           child: Icon(icon, size: 20, color: theme.colorScheme.primary),
         ),
-        const SizedBox(width: GimmySpacing.sm + 4),
+        const SizedBox(width: GimmySpacing.ms),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,7 +93,7 @@ class DesktopCardHeader extends StatelessWidget {
                   caption!.toUpperCase(),
                   style: tokens.labelMono.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
-                    letterSpacing: 1.2,
+                    letterSpacing: GimmyType.capsTracking,
                   ),
                 ),
             ],

@@ -14,6 +14,7 @@ import '../widgets/settings_desktop.dart';
 import '../widgets/settings_row.dart';
 import '../widgets/settings_section.dart';
 import '../widgets/theme_mode_selector.dart';
+import '../widgets/theme_picker_sheet.dart';
 import '../widgets/wipe_confirmation_dialog.dart';
 
 /// Theme, plan import, sensor and cues, the data kept, and About.
@@ -40,6 +41,9 @@ class SettingsPage extends StatelessWidget {
     final themeMode = context.select(
       (AppBloc bloc) => bloc.state.settings.themeMode,
     );
+    final themeId = context.select(
+      (AppBloc bloc) => bloc.state.settings.themeId,
+    );
     final plan = context.select((AppBloc bloc) => bloc.state.plan);
 
     final isDesktop = isDesktopLayout(context);
@@ -63,6 +67,12 @@ class SettingsPage extends StatelessWidget {
             onChanged: (mode) =>
                 context.read<AppBloc>().add(AppThemeModeChanged(mode)),
           ),
+        ),
+        SettingsRow(
+          icon: Icons.palette_outlined,
+          title: 'Theme',
+          subtitle: themeId.label,
+          onTap: () => showThemePicker(context),
         ),
       ],
     );

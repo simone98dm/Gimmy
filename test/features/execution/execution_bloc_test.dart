@@ -1,14 +1,14 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gimmy/data/models/plan.dart';
 import 'package:gimmy/data/models/plan_step.dart';
 import 'package:gimmy/data/models/workout_session.dart';
-import 'package:gimmy/data/storage/document_store_io.dart';
 import 'package:gimmy/data/storage/session_repository.dart';
 import 'package:gimmy/features/execution/bloc/execution_bloc.dart';
 import 'package:gimmy/features/execution/bloc/ticker.dart';
+
+import '../../support/memory_store.dart';
 
 /// A ticker driven by the test instead of the clock.
 class FakeTicker implements Ticker {
@@ -21,7 +21,9 @@ class FakeTicker implements Ticker {
   Future<void> tick(int seconds) async {
     for (var i = 0; i < seconds; i++) {
       _controller.add(null);
-      await pumpEventQueue(times: 5);
+      // The bloc handles events one at a time through an async queue, which
+      // takes a few more turns to drain than a plain handler.
+      await pumpEventQueue(times: 20);
     }
   }
 
@@ -49,21 +51,18 @@ PlanStep open(String name) =>
     PlanStep.open(name: name, intensity: StepIntensity.cooldown);
 
 void main() {
-  late Directory tempDir;
+  late MemoryStore store;
   late SessionRepository sessions;
   late FakeTicker ticker;
 
   setUp(() {
-    tempDir = Directory.systemTemp.createTempSync('gimmy-exec');
-    sessions = SessionRepository(
-      store: FileDocumentStore('sessions.json', directory: tempDir),
-    );
+    store = MemoryStore();
+    sessions = SessionRepository(store: store);
     ticker = FakeTicker();
   });
 
   tearDown(() async {
     await ticker.dispose();
-    if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
   });
 
   ExecutionBloc blocFor(Plan plan) => ExecutionBloc(
@@ -71,6 +70,9 @@ void main() {
     sessionRepository: sessions,
     ticker: ticker,
     now: () => DateTime(2026, 9, 22, 18),
+    // The clock above is frozen, so any guard would swallow every second
+    // tap. The guard has its own test.
+    advanceGuard: Duration.zero,
   );
 
   Future<ExecutionBloc> started(Plan plan) async {
@@ -291,31 +293,296 @@ void main() {
 
       bloc.add(const ExecutionSkipped());
       await pumpEventQueue(times: 50);
-      expect(bloc.state.canUndoSkip, isTrue);
+      expect(bloc.state.canUndo, isTrue);
 
-      bloc.add(const ExecutionSkipUndone());
+      bloc.add(const ExecutionUndone());
       await pumpEventQueue(times: 50);
 
       expect(bloc.state.currentStep?.name, 'Rest');
       expect(bloc.state.remainingSeconds, 60);
       expect(bloc.state.isTimerRunning, isFalse);
       expect(bloc.state.stepsSkipped, 0);
-      expect(bloc.state.canUndoSkip, isFalse);
+      expect(bloc.state.canUndo, isFalse);
     });
 
-    test('undo is not offered after a step is done normally', () async {
+    test('undo takes back a step marked done, and its count', () async {
       final bloc = await started(planOf([reps('Squat', 10), reps('Row', 8)]));
       addTearDown(bloc.close);
 
       bloc.add(const ExecutionPrimaryPressed());
       await pumpEventQueue(times: 50);
-      expect(bloc.state.canUndoSkip, isFalse);
+      expect(bloc.state.lastAdvance, AdvanceKind.done);
+      expect(bloc.state.undoableStep?.name, 'Squat');
 
-      bloc.add(const ExecutionSkipUndone());
+      bloc.add(const ExecutionUndone());
       await pumpEventQueue(times: 50);
 
+      expect(bloc.state.currentStep?.name, 'Squat');
+      expect(bloc.state.stepsCompleted, 0);
+      expect(bloc.state.canUndo, isFalse);
+    });
+
+    test('undo stays on offer until the next action, then goes', () async {
+      final bloc = await started(
+        planOf([reps('Squat', 10), timer('Rest', 60), reps('Row', 8)]),
+      );
+      addTearDown(bloc.close);
+
+      bloc.add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 50);
+      await ticker.tick(3);
+      expect(bloc.state.canUndo, isTrue, reason: 'time passing is no action');
+
+      bloc.add(const ExecutionPrimaryPressed()); // Play on Rest
+      await pumpEventQueue(times: 50);
+      expect(bloc.state.canUndo, isFalse);
+    });
+
+    test('a timer running out is not undoable', () async {
+      final bloc = await started(planOf([timer('Plank', 2), reps('Row', 8)]));
+      addTearDown(bloc.close);
+
+      bloc.add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 50);
+      await ticker.tick(2);
+
+      expect(bloc.state.currentStep?.name, 'Row');
+      expect(bloc.state.canUndo, isFalse);
+    });
+
+    test('undo on the last step reopens the finished workout', () async {
+      final bloc = await started(planOf([reps('Squat', 10), reps('Row', 8)]));
+      addTearDown(bloc.close);
+
+      bloc.add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 50);
+      // Finishing and reopening both write to disk: wait for the state, not
+      // for a count of turns.
+      final finished = bloc.stream.firstWhere((s) => s.isFinished);
+      bloc.add(const ExecutionPrimaryPressed());
+      await finished;
+      expect(bloc.state.status, ExecutionStatus.completed);
+      expect(bloc.state.canUndo, isTrue);
+
+      final reopened = bloc.stream.firstWhere((s) => s.isRunning);
+      bloc.add(const ExecutionUndone());
+      await reopened;
+
+      expect(bloc.state.status, ExecutionStatus.running);
       expect(bloc.state.currentStep?.name, 'Row');
       expect(bloc.state.stepsCompleted, 1);
+
+      final stored = (await sessions.loadAll()).single;
+      expect(stored.status, isNull, reason: 'in progress again');
+      expect(stored.endedAt, isNull);
+
+      // The clock is back on: a reps step counts its time.
+      final active = bloc.state.totalActiveSeconds;
+      await ticker.tick(2);
+      expect(bloc.state.totalActiveSeconds, active + 2);
+    });
+  });
+
+  group('step records', () {
+    Future<WorkoutSession> stored() async => (await sessions.loadAll()).single;
+
+    test('each step is recorded as it is left, then saved', () async {
+      final bloc = await started(
+        planOf([reps('Squat', 10), timer('Plank', 2), reps('Row', 8)]),
+      );
+      addTearDown(bloc.close);
+
+      await ticker.tick(3); // three seconds of squats
+      bloc.add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 50);
+
+      // Saved as it goes, not only at the end.
+      expect((await stored()).steps.map((r) => r.name), ['Squat']);
+      expect((await stored()).isFinished, isFalse);
+
+      bloc.add(const ExecutionPrimaryPressed()); // Play
+      await pumpEventQueue(times: 50);
+      await ticker.tick(2); // runs out
+      bloc.add(const ExecutionSkipped());
+      await pumpEventQueue(times: 50);
+
+      final session = await stored();
+      expect(session.plannedSteps, 3);
+      expect(session.steps, [
+        const StepRecord(
+          name: 'Squat',
+          target: '10 reps',
+          intensity: StepIntensity.active,
+          outcome: StepOutcome.done,
+          activeSeconds: 3,
+        ),
+        const StepRecord(
+          name: 'Plank',
+          target: '00:02',
+          intensity: StepIntensity.active,
+          outcome: StepOutcome.done,
+          activeSeconds: 2,
+        ),
+        const StepRecord(
+          name: 'Row',
+          target: '8 reps',
+          intensity: StepIntensity.active,
+          outcome: StepOutcome.skipped,
+          activeSeconds: 0,
+        ),
+      ]);
+    });
+
+    test('an early exit leaves the unreached steps counted', () async {
+      final bloc = await started(
+        planOf([reps('A', 5), reps('B', 5), reps('C', 5)]),
+      );
+      addTearDown(bloc.close);
+
+      bloc.add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 50);
+      bloc.add(const ExecutionAbandoned());
+      await pumpEventQueue(times: 50);
+
+      final session = await stored();
+      expect(session.steps, hasLength(1));
+      expect(session.stepsNotReached, 2);
+    });
+
+    test('undo takes the record back, keeping the time worked', () async {
+      final bloc = await started(planOf([reps('Squat', 10), reps('Row', 8)]));
+      addTearDown(bloc.close);
+
+      await ticker.tick(4);
+      bloc.add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 50);
+      bloc.add(const ExecutionUndone());
+      await pumpEventQueue(times: 50);
+      expect((await stored()).steps, isEmpty);
+
+      await ticker.tick(2);
+      bloc.add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 50);
+
+      expect((await stored()).steps.single.activeSeconds, 6);
+    });
+
+    test('heart rate is averaged per step and over the session', () async {
+      int? bpm = 100;
+      final bloc = ExecutionBloc(
+        plan: planOf([reps('Squat', 10), reps('Row', 8)]),
+        sessionRepository: sessions,
+        ticker: ticker,
+        now: () => DateTime(2026, 9, 22, 18),
+        advanceGuard: Duration.zero,
+        heartRate: () => bpm,
+      )..add(const ExecutionStarted());
+      addTearDown(bloc.close);
+      await pumpEventQueue(times: 50);
+
+      await ticker.tick(1); // 100
+      bpm = 120;
+      await ticker.tick(1); // 120
+      bloc.add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 50);
+      bpm = 170;
+      await ticker.tick(1); // 170
+      bpm = null; // sensor dropped out: no sample, not a zero
+      await ticker.tick(1);
+      bloc.add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 50);
+
+      final session = await stored();
+      expect(session.steps.map((r) => r.averageBpm), [110, 170]);
+      expect(session.averageBpm, 130);
+      expect(session.maxBpm, 170);
+    });
+
+    test('with no sensor, no heart rate is recorded', () async {
+      final bloc = await started(planOf([reps('Squat', 10)]));
+      addTearDown(bloc.close);
+      await ticker.tick(2);
+      bloc.add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 50);
+
+      final session = await stored();
+      expect(session.averageBpm, isNull);
+      expect(session.steps.single.averageBpm, isNull);
+    });
+  });
+
+  group('past outcomes', () {
+    test('track done and skipped for the plan list, undo included', () async {
+      final bloc = await started(
+        planOf([reps('A', 5), reps('B', 5), reps('C', 5)]),
+      );
+      addTearDown(bloc.close);
+
+      bloc.add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 50);
+      bloc.add(const ExecutionSkipped());
+      await pumpEventQueue(times: 50);
+      expect(bloc.state.pastOutcomes, [StepOutcome.done, StepOutcome.skipped]);
+
+      bloc.add(const ExecutionUndone());
+      await pumpEventQueue(times: 50);
+      expect(bloc.state.pastOutcomes, [StepOutcome.done]);
+    });
+  });
+
+  group('double taps', () {
+    test('a double Done on the last step finishes once', () async {
+      final slowStore = MemoryStore(isWriteSlow: true);
+      final bloc = ExecutionBloc(
+        plan: planOf([reps('Only', 5)]),
+        sessionRepository: SessionRepository(store: slowStore),
+        ticker: ticker,
+        advanceGuard: Duration.zero,
+      )..add(const ExecutionStarted());
+      addTearDown(bloc.close);
+      await pumpEventQueue(times: 50);
+      final writesBefore = slowStore.writes;
+
+      // Back to back: the second arrives while the finish is still saving.
+      bloc
+        ..add(const ExecutionPrimaryPressed())
+        ..add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 200);
+
+      expect(bloc.state.status, ExecutionStatus.completed);
+      expect(bloc.state.stepsCompleted, 1);
+      expect(
+        slowStore.writes - writesBefore,
+        1,
+        reason: 'one finish, one save',
+      );
+    });
+
+    test('a second tap inside the guard moves nothing', () async {
+      var clock = DateTime(2026, 9, 22, 18);
+      final bloc = ExecutionBloc(
+        plan: planOf([reps('A', 5), reps('B', 5), reps('C', 5)]),
+        sessionRepository: sessions,
+        ticker: ticker,
+        now: () => clock,
+        advanceGuard: const Duration(milliseconds: 500),
+      )..add(const ExecutionStarted());
+      addTearDown(bloc.close);
+      await pumpEventQueue(times: 50);
+
+      bloc.add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 50);
+      clock = clock.add(const Duration(milliseconds: 120));
+      bloc.add(const ExecutionSkipped());
+      await pumpEventQueue(times: 50);
+
+      expect(bloc.state.currentStep?.name, 'B');
+      expect(bloc.state.stepsSkipped, 0);
+
+      clock = clock.add(const Duration(milliseconds: 600));
+      bloc.add(const ExecutionPrimaryPressed());
+      await pumpEventQueue(times: 50);
+      expect(bloc.state.currentStep?.name, 'C');
     });
   });
 

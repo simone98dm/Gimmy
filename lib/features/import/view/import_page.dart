@@ -11,17 +11,23 @@ import '../../../core/widgets/gimmy_cta.dart';
 import '../../../core/widgets/section_heading.dart';
 import '../../../core/widgets/stat_tile.dart';
 import '../../../data/models/plan.dart';
+import '../../../data/sample_plan.dart';
 import '../../../core/widgets/plan_step_list.dart';
 import '../bloc/import_bloc.dart';
+import '../widgets/exercise_demos_card.dart';
 import '../widgets/import_desktop.dart';
 
 /// Picks a Garmin `.fit` workout file, shows what is in it, and saves it as the
 /// active plan once the user confirms.
 class ImportPage extends StatelessWidget {
-  const ImportPage({super.key, this.onImported});
+  const ImportPage({super.key, this.onImported, this.offerSample = false});
 
   /// Called after a plan is saved, so the host can move to the Dashboard.
   final VoidCallback? onImported;
+
+  /// Offer the built-in sample workout. Only when there is no plan yet: from
+  /// Settings it would let a real plan be swapped for a demo by accident.
+  final bool offerSample;
 
   @override
   Widget build(BuildContext context) {
@@ -30,15 +36,17 @@ class ImportPage extends StatelessWidget {
       listener: (context, state) {
         if (state.status == ImportStatus.saved) onImported?.call();
       },
-      builder: (context, state) => _ImportView(state: state),
+      builder: (context, state) =>
+          _ImportView(state: state, offerSample: offerSample),
     );
   }
 }
 
 class _ImportView extends StatelessWidget {
-  const _ImportView({required this.state});
+  const _ImportView({required this.state, required this.offerSample});
 
   final ImportState state;
+  final bool offerSample;
 
   @override
   Widget build(BuildContext context) {
@@ -85,6 +93,7 @@ class _ImportView extends StatelessWidget {
               children: [
                 if (plan == null) ...[
                   _DropZone(isBusy: state.isBusy),
+                  if (offerSample) _SampleOffer(isBusy: state.isBusy),
                   const SizedBox(height: GimmySpacing.sm),
                   const _FileHelp(),
                 ],
@@ -105,6 +114,11 @@ class _ImportView extends StatelessWidget {
                   ),
                   const SizedBox(height: GimmySpacing.lg),
                   IntensityMixCard(plan: plan),
+                  const SizedBox(height: GimmySpacing.lg),
+                  ExerciseDemosCard(
+                    plan: plan,
+                    enabled: state.status == ImportStatus.preview,
+                  ),
                 ],
                 const SizedBox(height: GimmySpacing.lg),
               ],
@@ -168,6 +182,7 @@ class _ImportView extends StatelessWidget {
           // being confirmed is what fills the screen.
           if (plan == null) ...[
             _DropZone(isBusy: state.isBusy),
+            if (offerSample) _SampleOffer(isBusy: state.isBusy),
             const SizedBox(height: GimmySpacing.sm),
             const _FileHelp(),
           ] else
@@ -182,6 +197,11 @@ class _ImportView extends StatelessWidget {
           if (plan != null) ...[
             const SizedBox(height: GimmySpacing.md),
             _PlanSummary(plan: plan),
+            const SizedBox(height: GimmySpacing.md),
+            ExerciseDemosCard(
+              plan: plan,
+              enabled: state.status == ImportStatus.preview,
+            ),
             const SizedBox(height: GimmySpacing.lg),
           ],
         ],
@@ -218,7 +238,7 @@ class _StepsLabel extends StatelessWidget {
       'STEPS',
       style: GimmyTokens.of(context).labelMono.copyWith(
         color: theme.colorScheme.onSurfaceVariant,
-        letterSpacing: 1.2,
+        letterSpacing: GimmyType.capsTracking,
       ),
     );
   }
@@ -295,6 +315,66 @@ class _DropZone extends StatelessWidget {
   }
 }
 
+/// The way in for someone with no file: a secondary action under the picker,
+/// because importing their own plan is still the point.
+class _SampleOffer extends StatelessWidget {
+  const _SampleOffer({required this.isBusy});
+
+  final bool isBusy;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    // Built only to be measured: the numbers come from the plan itself.
+    final sample = buildSamplePlan(id: '', importedAt: DateTime(0));
+    final minutes = sample
+        .estimatedDuration(secondsPerRep: AppConfig.estimatedSecondsPerRep)
+        .inMinutes;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: GimmySpacing.lg),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Expanded(child: Divider()),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: GimmySpacing.ms,
+                ),
+                child: Text('No workout file yet?', style: muted),
+              ),
+              const Expanded(child: Divider()),
+            ],
+          ),
+          const SizedBox(height: GimmySpacing.md),
+          OutlinedButton.icon(
+            onPressed: isBusy
+                ? null
+                : () => context.read<ImportBloc>().add(
+                    const ImportSampleRequested(),
+                  ),
+            icon: const Icon(Icons.play_circle_outline),
+            label: const Text('Try a sample workout'),
+          ),
+          const SizedBox(height: GimmySpacing.xs),
+          Text(
+            '$minutes min · ${sample.stepCount} steps · '
+            'replaced when you import your own',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// The picked file, once parsed, with the way to pick another.
 class _ChosenFile extends StatelessWidget {
   const _ChosenFile({required this.filename, required this.isBusy});
@@ -344,6 +424,11 @@ class _FileHelp extends StatelessWidget {
       // ExpansionTile draws dividers above and below by default.
       data: theme.copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
+        // Open on first run, when there is no way out but to import: that is
+        // exactly when someone has not got a file yet.
+        initiallyExpanded:
+            ModalRoute.of(context)?.popDisposition ==
+            RoutePopDisposition.doNotPop,
         tilePadding: EdgeInsets.zero,
         childrenPadding: const EdgeInsets.only(bottom: GimmySpacing.sm),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
@@ -409,7 +494,7 @@ class _ImportError extends StatelessWidget {
                   ),
                 ),
                 if (filename != null) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: GimmySpacing.xxs),
                   Text(filename!, style: theme.textTheme.bodyLarge),
                 ],
                 const SizedBox(height: GimmySpacing.xs),

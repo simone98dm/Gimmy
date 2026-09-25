@@ -143,7 +143,7 @@ class _PageBadge extends StatelessWidget {
       label.toUpperCase(),
       style: tokens.labelMono.copyWith(
         color: theme.colorScheme.primary,
-        letterSpacing: 1,
+        letterSpacing: GimmyType.capsTracking,
       ),
     );
   }

@@ -23,6 +23,17 @@ class AppThemeModeChanged extends AppEvent {
   List<Object?> get props => [themeMode];
 }
 
+/// Picks the color theme — Hacker Green, Sophisticated Blue — applied on top
+/// of light/dark. Applies immediately when changed.
+class AppThemeChanged extends AppEvent {
+  const AppThemeChanged(this.themeId);
+
+  final GimmyThemeId themeId;
+
+  @override
+  List<Object?> get props => [themeId];
+}
+
 /// Turns the step and completion cues — sound and vibration — on or off.
 class AppCuesToggled extends AppEvent {
   const AppCuesToggled(this.isEnabled);

@@ -1,8 +1,11 @@
+import 'package:gimmy/data/exercises/exercise_demos.dart';
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gimmy/data/models/plan.dart';
 import 'package:gimmy/app/bloc/app_bloc.dart';
 import 'package:gimmy/app/view/home_shell.dart';
 import 'package:gimmy/core/theme/app_theme.dart';
@@ -13,6 +16,7 @@ import 'package:gimmy/data/storage/session_repository.dart';
 import 'package:gimmy/data/storage/settings_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_exercise_demos.dart';
 import '../support/pump_until.dart';
 import '../support/fake_heart_rate_monitor.dart';
 import '../support/sample_fit.dart';
@@ -37,48 +41,56 @@ void main() {
   Future<PickedFitFile?> pickSample() async =>
       PickedFitFile(name: sampleFitFilename, bytes: sampleFitBytes());
 
-  testWidgets('a fresh install imports a plan and lands on the Dashboard', (
-    tester,
-  ) async {
+  /// A fresh install: nothing stored, the real shell over real storage.
+  Future<void> pumpFreshInstall(WidgetTester tester) async {
     tester.view.physicalSize = const Size(1179, 2556);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
 
-    await tester.runAsync(() async {
-      final preferences = await SharedPreferences.getInstance();
+    final preferences = await SharedPreferences.getInstance();
 
-      await tester.pumpWidget(
-        MultiRepositoryProvider(
-          providers: [
-            RepositoryProvider(
-              create: (_) => PlanRepository(
-                store: FileDocumentStore('plan.json', directory: tempDir),
-              ),
+    await tester.pumpWidget(
+      MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider(
+            create: (_) => ExerciseDemos(media: FakeExerciseMediaStore()),
+          ),
+          RepositoryProvider(
+            create: (_) => PlanRepository(
+              store: FileDocumentStore('plan.json', directory: tempDir),
             ),
-            RepositoryProvider(
-              create: (_) => SessionRepository(
-                store: FileDocumentStore('sessions.json', directory: tempDir),
-              ),
+          ),
+          RepositoryProvider(
+            create: (_) => SessionRepository(
+              store: FileDocumentStore('sessions.json', directory: tempDir),
             ),
-            RepositoryProvider(
-              create: (_) => SettingsRepository(preferences: preferences),
-            ),
-          ],
-          child: BlocProvider(
-            create: (context) => AppBloc(
-              planRepository: context.read<PlanRepository>(),
-              sessionRepository: context.read<SessionRepository>(),
-              settingsRepository: context.read<SettingsRepository>(),
-            )..add(const AppStarted()),
-            child: withHeartRate(
-              MaterialApp(
-                theme: AppTheme.dark,
-                home: HomeShell(pickFile: pickSample),
-              ),
+          ),
+          RepositoryProvider(
+            create: (_) => SettingsRepository(preferences: preferences),
+          ),
+        ],
+        child: BlocProvider(
+          create: (context) => AppBloc(
+            planRepository: context.read<PlanRepository>(),
+            sessionRepository: context.read<SessionRepository>(),
+            settingsRepository: context.read<SettingsRepository>(),
+          )..add(const AppStarted()),
+          child: withHeartRate(
+            MaterialApp(
+              theme: AppTheme.dark,
+              home: HomeShell(pickFile: pickSample),
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
+
+  testWidgets('a fresh install imports a plan and lands on the Dashboard', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      await pumpFreshInstall(tester);
       // With nothing stored, Import opens by itself and cannot be dismissed.
       await pumpUntilFound(tester, find.text('Import a workout'));
       expect(find.byType(BackButton), findsNothing);
@@ -96,6 +108,30 @@ void main() {
     expect(find.text('Import a workout'), findsNothing);
     expect(find.text('START A STREAK TODAY'), findsOneWidget);
     expect(find.text(sampleFitPlanName), findsOneWidget);
+    expect(find.text('START WORKOUT'), findsOneWidget);
+  });
+
+  testWidgets('with no file, the sample workout gets a fresh install going', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      await pumpFreshInstall(tester);
+      await pumpUntilFound(tester, find.text('Try a sample workout'));
+
+      await tester.ensureVisible(find.text('Try a sample workout'));
+      await tester.tap(find.text('Try a sample workout'));
+      await pumpUntilFound(tester, find.text('Confirm & Save Plan'));
+      expect(find.text(Plan.sampleSourceFilename), findsOneWidget);
+
+      await tester.tap(find.text('Confirm & Save Plan'));
+      // Not "until the heading is gone": scrolling to the sample button
+      // already took the heading out of the sliver list.
+      await pumpUntilFound(tester, find.text('START WORKOUT'));
+    });
+
+    // Today says it is the sample, and how to replace it.
+    expect(find.text('SAMPLE PLAN'), findsOneWidget);
+    expect(find.text('Import your own plan from Settings.'), findsOneWidget);
     expect(find.text('START WORKOUT'), findsOneWidget);
   });
 }

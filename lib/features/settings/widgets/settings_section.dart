@@ -69,7 +69,7 @@ class SettingsSection extends StatelessWidget {
             style: tokens.labelMono.copyWith(
               color: theme.colorScheme.primary,
               fontWeight: FontWeight.w600,
-              letterSpacing: 1.6,
+              letterSpacing: GimmyType.capsTracking,
             ),
           ),
         ),

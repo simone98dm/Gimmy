@@ -37,7 +37,7 @@ class SectionHeading extends StatelessWidget {
                   eyebrow.toUpperCase(),
                   style: tokens.labelMono.copyWith(
                     color: theme.colorScheme.primary,
-                    letterSpacing: 1.2,
+                    letterSpacing: GimmyType.capsTracking,
                   ),
                 ),
                 const SizedBox(height: GimmySpacing.xs),

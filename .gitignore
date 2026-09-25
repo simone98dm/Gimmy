@@ -68,5 +68,9 @@ app.*.map.json
 # Backup copies left behind by doc-rewriting tooling
 *.original.md
 
-# Golden images rendered by tests
+# Golden images and any other PNG rendered by tests are local-only: never
+# commit them (no `git add -f`). Regenerate with `flutter test --update-goldens`;
+# CI skips the `golden` tag (see dart_test.yaml).
 test/**/*.png
+
+.impeccable/
