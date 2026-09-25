@@ -23,9 +23,13 @@ void main() {
   setUpAll(() async => catalog = await ExerciseCatalog.load(rootBundle));
 
   /// The card over the built-in sample (Squat, Push-up, Plank), previewed.
-  Future<ImportBloc> pumpCard(WidgetTester tester) async {
+  Future<ImportBloc> pumpCard(
+    WidgetTester tester, {
+    bool isEnabled = true,
+  }) async {
     SharedPreferences.setMockInitialValues({});
     final demos = ExerciseDemos(
+      isEnabled: isEnabled,
       media: FakeExerciseMediaStore(),
       loadCatalog: () async => catalog,
     );
@@ -114,5 +118,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(bloc.state.plan, before);
+  });
+
+  testWidgets('stays hidden while demos are switched off', (tester) async {
+    await pumpCard(tester, isEnabled: false);
+
+    expect(find.text('Exercise demos'), findsNothing);
   });
 }

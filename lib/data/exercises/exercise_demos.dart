@@ -1,6 +1,7 @@
 import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/config/feature_flags.dart';
 import '../../core/logging/app_log.dart';
 import '../models/plan.dart';
 import '../models/plan_step.dart';
@@ -18,8 +19,13 @@ class ExerciseDemos {
   ExerciseDemos({
     Future<ExerciseCatalog> Function()? loadCatalog,
     ExerciseMediaStore? media,
+    this.isEnabled = FeatureFlags.showExerciseDemos,
   }) : _loadCatalog = loadCatalog ?? (() => ExerciseCatalog.load(rootBundle)),
        _media = media ?? openExerciseMediaStore();
+
+  /// The feature switch, injectable so tests can turn it on. Off, every
+  /// call below is a no-op and the app looks as if demos never existed.
+  final bool isEnabled;
 
   final Future<ExerciseCatalog> Function() _loadCatalog;
   final ExerciseMediaStore _media;
@@ -40,6 +46,7 @@ class ExerciseDemos {
   /// [plan] with the best catalog match on every working step. Rest,
   /// warm-up and cool-down steps never get a demo.
   Future<Plan> match(Plan plan) async {
+    if (!isEnabled) return plan;
     final catalog = await this.catalog();
     var matched = plan;
     for (final name in plan.exerciseNames) {
@@ -57,6 +64,7 @@ class ExerciseDemos {
   /// Fetches the media of every demo [plan] uses, where the platform keeps
   /// it offline.
   Future<void> prefetch(Plan plan) async {
+    if (!isEnabled) return;
     final catalog = await this.catalog();
     final entries = [for (final id in plan.exerciseIds) ?catalog.byId(id)];
     try {
@@ -71,6 +79,7 @@ class ExerciseDemos {
     String exerciseId, {
     bool still = false,
   }) async {
+    if (!isEnabled) return null;
     final entry = (await catalog()).byId(exerciseId);
     if (entry == null) return null;
     try {

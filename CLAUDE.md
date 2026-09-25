@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `gimmy` is a Flutter app (Dart SDK `^3.13.4`, Flutter 3.47.5 stable, bundle id
 `com.simone98dm.gimmy`) that imports a Garmin `.fit` workout plan, guides the user through it
 step by step, and tracks a streak and a calendar of past sessions. Everything is local: no
-backend, no account. The one network call is downloading exercise demos when a plan is saved. Live BPM comes from a paired Bluetooth
+backend, no account. The one network call is downloading exercise demos when a plan is saved,
+and that feature ships switched off (`FeatureFlags.showExerciseDemos`). Live BPM comes from a paired Bluetooth
 heart-rate sensor (a Garmin watch or strap).
 
 Platforms: **android, ios and web** (no macos/linux/windows). Adding one requires
@@ -56,7 +57,11 @@ them checks `GimmyMotion.isReduced(context)` and stays still when the platform a
   `open_document_store.dart`. `path_provider` has no web implementation, so nothing outside
   the `*_io.dart` files behind a conditional import (`document_store_io.dart`,
   `exercise_media_store_io.dart`) may import it.
-- **Exercise demos** (`lib/data/exercises/`, `ExerciseDemos`). `assets/exercises/catalog.json` is
+- **Exercise demos** (`lib/data/exercises/`, `ExerciseDemos`) are behind
+  `FeatureFlags.showExerciseDemos`, **off** until the media licence is in place. The one gate is
+  `ExerciseDemos.isEnabled` (defaults to the flag): off, `match`/`prefetch`/`demoFor` are no-ops,
+  the import card and its spacing are gone, and Legal §3/§6 drop the download and media copy.
+  Tests that exercise demos pass `isEnabled: true` (`oneDemo` does). `assets/exercises/catalog.json` is
   **generated** by `tool/build_exercise_catalog.dart` from
   [exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset), pinned to the commit in
   `AppConfig.exerciseMediaBaseUrl`; never edit it by hand, and bump the two together. On import
@@ -160,7 +165,7 @@ starting with an underscore, so constructors injecting into private fields canno
   Execution page must wrap it in `withHeartRate` from `test/support/fake_heart_rate_monitor.dart`.
 - `flutter_blue_plus` is licensed free for personal use only, and its Android Gradle plugin
   POSTs the app id/name/version to the author's license endpoint on every Android build. The
-  app itself makes no network calls at runtime beyond the exercise demo downloads.
+  app itself makes no network calls at runtime beyond the (flagged-off) exercise demo downloads.
 
 # CLAUDE.md
 

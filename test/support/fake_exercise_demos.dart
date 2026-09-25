@@ -63,8 +63,10 @@ Widget withExerciseDemos(Widget child, {ExerciseDemos? demos}) {
   );
 }
 
-/// One catalog exercise, `0001`, whose demo is already downloaded.
+/// Demos switched on, over one catalog exercise, `0001`, whose demo is
+/// already downloaded.
 ExerciseDemos oneDemo(FakeExerciseMediaStore media) => ExerciseDemos(
+  isEnabled: true,
   media: media,
   loadCatalog: () async => const ExerciseCatalog([
     CatalogEntry(

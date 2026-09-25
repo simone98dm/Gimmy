@@ -9,7 +9,9 @@ pinned at `7455efae41b330c265e7cd4b78dfa848e7ce5ebd`.
 
 ## Status (2026-09-25)
 
-Steps 1–8 implemented, 351 tests green. Not yet checked on a device: real GIFs on screen,
+Steps 1–8 implemented, all tests green. **Shipped switched off** behind
+`FeatureFlags.showExerciseDemos` (one gate: `ExerciseDemos.isEnabled`); flip it once the licence
+is in place and the device checks below are done. Not yet checked on a device: real GIFs on screen,
 preview thumbnails over the network, the background download. **Release blocked on the Gym
 visual licence.**
 

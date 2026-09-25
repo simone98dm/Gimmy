@@ -33,7 +33,7 @@ void main() {
   setUp(() async {
     tempDir = Directory.systemTemp.createTempSync('gimmy-import');
     media = FakeExerciseMediaStore();
-    demos = ExerciseDemos(media: media);
+    demos = ExerciseDemos(media: media, isEnabled: true);
     SharedPreferences.setMockInitialValues({});
     planRepository = PlanRepository(
       store: FileDocumentStore('plan.json', directory: tempDir),
@@ -347,7 +347,7 @@ void main() {
 
     test('a demo that fails to download does not fail the import', () async {
       media = FakeExerciseMediaStore(failing: {'0001'});
-      demos = ExerciseDemos(media: media);
+      demos = ExerciseDemos(media: media, isEnabled: true);
       final bloc = buildBloc(pickFile: () async => sampleFile());
       addTearDown(bloc.close);
 

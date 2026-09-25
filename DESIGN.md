@@ -230,7 +230,8 @@ celebration that lies about what was done.
   count, intensity chip, thin bar), then the step straight on the page —
   step name (headline-lg), instruction, a collapsed "Form tip" line, the dial
   centred in the height left (200–320dp; a ring only on timer steps) and the
-  heart-rate strip. When the step has an exercise demo, the dial is page one
+  heart-rate strip. When the step has an exercise demo (behind
+  `FeatureFlags.showExerciseDemos`, off for now), the dial is page one
   of two: swipe left for the demo (with the dial's figure and the
   © Gym visual credit under it), and two tappable dots under the pages say
   which is up. Every step opens on the dial; no demo, no pager. The controls and a one-line "Next · …" live in a **pinned

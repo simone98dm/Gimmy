@@ -10,6 +10,7 @@ import '../../../core/widgets/gimmy_card.dart';
 import '../../../core/widgets/gimmy_cta.dart';
 import '../../../core/widgets/section_heading.dart';
 import '../../../core/widgets/stat_tile.dart';
+import '../../../data/exercises/exercise_demos.dart';
 import '../../../data/models/plan.dart';
 import '../../../data/sample_plan.dart';
 import '../../../core/widgets/plan_step_list.dart';
@@ -57,7 +58,12 @@ class _ImportView extends StatelessWidget {
     return Column(
       children: [
         Expanded(
-          child: CustomScrollView(slivers: [..._intro(plan), ..._steps(plan)]),
+          child: CustomScrollView(
+            slivers: [
+              ..._intro(plan, showsDemos: _showsDemos(context)),
+              ..._steps(plan),
+            ],
+          ),
         ),
         // Pinned rather than trailing the step list: with the sample plan that
         // list is 54 rows long, and the action that ends the flow should not be
@@ -114,11 +120,13 @@ class _ImportView extends StatelessWidget {
                   ),
                   const SizedBox(height: GimmySpacing.lg),
                   IntensityMixCard(plan: plan),
-                  const SizedBox(height: GimmySpacing.lg),
-                  ExerciseDemosCard(
-                    plan: plan,
-                    enabled: state.status == ImportStatus.preview,
-                  ),
+                  if (_showsDemos(context)) ...[
+                    const SizedBox(height: GimmySpacing.lg),
+                    ExerciseDemosCard(
+                      plan: plan,
+                      enabled: state.status == ImportStatus.preview,
+                    ),
+                  ],
                 ],
                 const SizedBox(height: GimmySpacing.lg),
               ],
@@ -167,7 +175,11 @@ class _ImportView extends StatelessWidget {
 
   static const _padding = EdgeInsets.symmetric(horizontal: GimmySpacing.gutter);
 
-  List<Widget> _intro(Plan? plan) => [
+  /// Demos behind their feature flag; off, the page is as it was before.
+  static bool _showsDemos(BuildContext context) =>
+      context.read<ExerciseDemos>().isEnabled;
+
+  List<Widget> _intro(Plan? plan, {required bool showsDemos}) => [
     SliverPadding(
       padding: _padding,
       sliver: SliverList.list(
@@ -197,11 +209,13 @@ class _ImportView extends StatelessWidget {
           if (plan != null) ...[
             const SizedBox(height: GimmySpacing.md),
             _PlanSummary(plan: plan),
-            const SizedBox(height: GimmySpacing.md),
-            ExerciseDemosCard(
-              plan: plan,
-              enabled: state.status == ImportStatus.preview,
-            ),
+            if (showsDemos) ...[
+              const SizedBox(height: GimmySpacing.md),
+              ExerciseDemosCard(
+                plan: plan,
+                enabled: state.status == ImportStatus.preview,
+              ),
+            ],
             const SizedBox(height: GimmySpacing.lg),
           ],
         ],

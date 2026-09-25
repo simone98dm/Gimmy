@@ -52,7 +52,11 @@ void main() {
 
   setUp(() {
     media = FakeExerciseMediaStore();
-    demos = ExerciseDemos(media: media, loadCatalog: () async => _catalog);
+    demos = ExerciseDemos(
+      media: media,
+      loadCatalog: () async => _catalog,
+      isEnabled: true,
+    );
   });
 
   group('match', () {
@@ -80,6 +84,7 @@ void main() {
       'a catalog that fails to load costs the demos, not the import',
       () async {
         final broken = ExerciseDemos(
+          isEnabled: true,
           media: media,
           loadCatalog: () async => throw const FormatException('bad asset'),
         );
@@ -123,6 +128,7 @@ void main() {
   test('the catalog is loaded once', () async {
     var loads = 0;
     final counted = ExerciseDemos(
+      isEnabled: true,
       media: media,
       loadCatalog: () async {
         loads++;
@@ -152,6 +158,43 @@ void main() {
           .withExercise('Squat', null);
 
       expect(plan.steps.every((s) => s.exerciseId == null), isTrue);
+    });
+  });
+
+  group('switched off', () {
+    late ExerciseDemos off;
+
+    setUp(() {
+      off = ExerciseDemos(
+        media: FakeExerciseMediaStore(available: ['0001']),
+        loadCatalog: () async => _catalog,
+        isEnabled: false,
+      );
+    });
+
+    test('is the default, as FeatureFlags.showExerciseDemos says', () {
+      expect(ExerciseDemos(media: media).isEnabled, isFalse);
+    });
+
+    test('matches nothing', () async {
+      expect(await off.match(_plan()), _plan());
+    });
+
+    test('downloads nothing', () async {
+      final quiet = FakeExerciseMediaStore();
+      final demos = ExerciseDemos(
+        media: quiet,
+        loadCatalog: () async => _catalog,
+        isEnabled: false,
+      );
+
+      await demos.prefetch(_plan().withExercise('Squat', '0001'));
+
+      expect(quiet.prefetched, isEmpty);
+    });
+
+    test('shows nothing, even for a plan saved with demos', () async {
+      expect(await off.demoFor('0001'), isNull);
     });
   });
 }

@@ -11,6 +11,12 @@ abstract final class FeatureFlags {
   /// Perceived-effort (RPE) tile on the Execution page.
   static const bool showEffort = false;
 
+  /// Exercise demos: matched on import, downloaded on save, swiped to in the
+  /// runner. Off until the Gym visual media licence is in place; while off,
+  /// nothing is matched, downloaded or shown, even for plans saved with
+  /// demos. See `ExerciseDemos`.
+  static const bool showExerciseDemos = false;
+
   /// True when at least one flagged metric tile is visible, so the Execution
   /// page can drop the whole row (and its spacing) rather than render an empty
   /// band.

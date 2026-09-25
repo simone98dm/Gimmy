@@ -24,13 +24,14 @@ class ExerciseDemosCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final names = plan.exerciseNames;
-    if (names.isEmpty) return const SizedBox.shrink();
+    final demos = context.read<ExerciseDemos>();
+    if (names.isEmpty || !demos.isEnabled) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
     final tokens = GimmyTokens.of(context);
 
     return FutureBuilder(
-      future: context.read<ExerciseDemos>().catalog(),
+      future: demos.catalog(),
       builder: (context, snapshot) {
         final catalog = snapshot.data;
         if (catalog == null) return const SizedBox.shrink();
