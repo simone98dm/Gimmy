@@ -5,6 +5,13 @@ written by [release-please](https://github.com/googleapis/release-please) from
 [Conventional Commits](https://www.conventionalcommits.org/); do not edit the
 released sections by hand.
 
+## [1.4.0](https://github.com/simone98dm/Gimmy/compare/v1.3.0...v1.4.0) (2026-09-25)
+
+
+### Features
+
+* implement exercise demos feature with feature flag ([4a848c4](https://github.com/simone98dm/Gimmy/commit/4a848c4fb0cf1080ad4395fe084f1e0195992713))
+
 ## [1.3.0](https://github.com/simone98dm/Gimmy/compare/v1.2.0...v1.3.0) (2026-09-25)
 
 
