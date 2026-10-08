@@ -8,6 +8,7 @@ import '../../../core/config/feature_flags.dart';
 import '../../../core/widgets/desktop_layout.dart';
 import '../../about/view/about_page.dart';
 import '../../about/view/legal_page.dart';
+import '../../about/view/privacy_page.dart';
 import '../../heart_rate/bloc/heart_rate_bloc.dart';
 import '../../heart_rate/view/pairing_sheet.dart';
 import '../widgets/settings_desktop.dart';
@@ -52,6 +53,7 @@ class SettingsPage extends StatelessWidget {
     );
     void openAbout() => Navigator.of(context).push(AboutPage.route());
     void openLegal() => Navigator.of(context).push(LegalPage.route());
+    void openPrivacy() => Navigator.of(context).push(PrivacyPage.route());
 
     final appearance = SettingsSection(
       label: 'Appearance',
@@ -138,6 +140,12 @@ class SettingsPage extends StatelessWidget {
           title: 'Legal notes & terms',
           subtitle: 'Disclaimer, your data, trademarks',
           onTap: openLegal,
+        ),
+        SettingsRow(
+          icon: Icons.privacy_tip_outlined,
+          title: 'Privacy policy',
+          subtitle: 'What is stored, where, and your rights',
+          onTap: openPrivacy,
         ),
       ],
     );

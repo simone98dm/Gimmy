@@ -12,6 +12,7 @@ import '../../settings/widgets/settings_row.dart';
 import '../../settings/widgets/settings_section.dart';
 import '../widgets/info_card.dart';
 import 'legal_page.dart';
+import 'privacy_page.dart';
 
 /// What Gimmy is, how it is built, who made it — and the way to the legal
 /// notes and the open-source licences.
@@ -100,6 +101,13 @@ class AboutPage extends StatelessWidget {
                     title: 'Legal notes & terms',
                     subtitle: 'Disclaimer, your data, trademarks',
                     onTap: () => Navigator.of(context).push(LegalPage.route()),
+                  ),
+                  SettingsRow(
+                    icon: Icons.privacy_tip_outlined,
+                    title: 'Privacy policy',
+                    subtitle: 'What is stored, where, and your rights',
+                    onTap: () =>
+                        Navigator.of(context).push(PrivacyPage.route()),
                   ),
                   SettingsRow(
                     icon: Icons.integration_instructions_outlined,

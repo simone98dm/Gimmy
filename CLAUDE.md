@@ -108,6 +108,10 @@ them checks `GimmyMotion.isReduced(context)` and stays still when the platform a
   `LoggingNavigatorObserver`, so only log *outcomes* by hand. Give every route, dialog and
   sheet a `RouteSettings(name:)` so the log can say what opened. Pass the stack trace to
   `addError`.
+- **The web build contacts no third party**, and must not start to: `web/flutter_bootstrap.js`
+  points CanvasKit and the fallback fonts at our own origin (Roboto is self-hosted in
+  `web/fonts/fallback/`). That is why there is no cookie banner. Any new network call, storage
+  or embed has to go into `docs/privacy-audit.md` and `PrivacyPage` first.
 - **Do not put `InkSparkle` back.** It compiles a fragment shader on first use and stalls the
   first tap. The theme uses `InkRipple`.
 - **Tab pages are all alive** inside the `IndexedStack`, so `context.watch` on `AppBloc` rebuilds

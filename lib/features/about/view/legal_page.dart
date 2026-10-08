@@ -69,6 +69,7 @@ class LegalPage extends StatelessWidget {
         'Bluetooth is used only to read heart rate from the sensor you pair. '
             '"Wipe profile" in Settings deletes everything, and so does '
             'uninstalling the app.',
+        'The privacy policy, under Settings and About, has the details.',
       ],
     ),
     (

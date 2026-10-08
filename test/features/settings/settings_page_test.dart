@@ -12,6 +12,7 @@ import 'package:gimmy/data/storage/session_repository.dart';
 import 'package:gimmy/data/storage/settings_repository.dart';
 import 'package:gimmy/features/about/view/about_page.dart';
 import 'package:gimmy/features/about/view/legal_page.dart';
+import 'package:gimmy/features/about/view/privacy_page.dart';
 import 'package:gimmy/features/settings/view/settings_page.dart';
 import 'package:gimmy/features/settings/widgets/theme_picker_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -148,5 +149,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LegalPage), findsOneWidget);
     expect(find.text('Not a medical device'), findsOneWidget);
+  });
+
+  testWidgets('Privacy policy opens from Settings and names the controller', (
+    tester,
+  ) async {
+    await pumpSettings(tester);
+
+    final privacyRow = find.text('Privacy policy');
+    await tester.ensureVisible(privacyRow);
+    await tester.tap(privacyRow);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PrivacyPage), findsOneWidget);
+    expect(find.textContaining(PrivacyPage.controllerEmail), findsWidgets);
   });
 }
